@@ -1,0 +1,270 @@
+2026-06-05 20:59:39.548405 INFO::Writing function arguments to log file
+2026-06-05 20:59:39.548788 DEBUG::Function arguments
+2026-06-05 20:59:39.54894 DEBUG::Output folder: GTDB_Results/maaslin2/U
+2026-06-05 20:59:39.549078 DEBUG::Min Abundance: 0.000000
+2026-06-05 20:59:39.549205 DEBUG::Min Prevalence: 0.000000
+2026-06-05 20:59:39.549325 DEBUG::Normalization: NONE
+2026-06-05 20:59:39.549453 DEBUG::Transform: LOG
+2026-06-05 20:59:39.549577 DEBUG::Analysis method: LM
+2026-06-05 20:59:39.549701 DEBUG::Max significance: 0.250000
+2026-06-05 20:59:39.549823 DEBUG::Random effects:
+2026-06-05 20:59:39.549947 DEBUG::Fixed effects: Periodontitis,Diabetes,KidneyDisease,Age,Sex
+2026-06-05 20:59:39.550067 DEBUG::Correction method: BH
+2026-06-05 20:59:39.550189 DEBUG::Standardize: FALSE
+2026-06-05 20:59:39.550306 DEBUG::Cores: 1
+2026-06-05 20:59:39.550423 INFO::Verifying options selected are valid
+2026-06-05 20:59:39.550666 INFO::Determining format of input files
+2026-06-05 20:59:39.550881 INFO::Input format is data samples as rows and metadata samples as rows
+2026-06-05 20:59:39.551259 DEBUG::A total of 101 samples were found in both the data and metadata
+2026-06-05 20:59:39.551376 DEBUG::Reordering data/metadata to use same sample ordering
+2026-06-05 20:59:39.552263 INFO::Formula for fixed effects: expr ~  Periodontitis + Diabetes + KidneyDisease + Age + Sex
+2026-06-05 20:59:39.552615 INFO::Filter data based on min abundance and min prevalence
+2026-06-05 20:59:39.552828 INFO::Total samples in data: 101
+2026-06-05 20:59:39.553029 INFO::Min samples required with min abundance for a feature not to be filtered: 0.000000
+2026-06-05 20:59:39.55422 INFO::Total filtered features: 0
+2026-06-05 20:59:39.554451 INFO::Filtered feature names from abundance and prevalence filtering:
+2026-06-05 20:59:39.556338 INFO::Total filtered features with variance filtering: 0
+2026-06-05 20:59:39.556575 INFO::Filtered feature names from variance filtering:
+2026-06-05 20:59:39.556772 INFO::Running selected normalization method: NONE
+2026-06-05 20:59:39.556963 INFO::Bypass z-score application to metadata
+2026-06-05 20:59:39.557153 INFO::Running selected transform method: LOG
+2026-06-05 20:59:39.559215 INFO::Running selected analysis method: LM
+2026-06-05 20:59:39.559475 INFO::Fitting model to feature number 1, F1
+2026-06-05 20:59:39.560893 INFO::Fitting model to feature number 2, F2
+2026-06-05 20:59:39.561982 INFO::Fitting model to feature number 3, F3
+2026-06-05 20:59:39.563032 INFO::Fitting model to feature number 4, F4
+2026-06-05 20:59:39.564084 INFO::Fitting model to feature number 5, F5
+2026-06-05 20:59:39.565147 INFO::Fitting model to feature number 6, F6
+2026-06-05 20:59:39.566186 INFO::Fitting model to feature number 7, F7
+2026-06-05 20:59:39.567226 INFO::Fitting model to feature number 8, F8
+2026-06-05 20:59:39.568266 INFO::Fitting model to feature number 9, F9
+2026-06-05 20:59:39.569306 INFO::Fitting model to feature number 10, F10
+2026-06-05 20:59:39.57034 INFO::Fitting model to feature number 11, F11
+2026-06-05 20:59:39.571405 INFO::Fitting model to feature number 12, F12
+2026-06-05 20:59:39.572436 INFO::Fitting model to feature number 13, F13
+2026-06-05 20:59:39.573461 INFO::Fitting model to feature number 14, F14
+2026-06-05 20:59:39.574481 INFO::Fitting model to feature number 15, F15
+2026-06-05 20:59:39.575497 INFO::Fitting model to feature number 16, F16
+2026-06-05 20:59:39.576518 INFO::Fitting model to feature number 17, F17
+2026-06-05 20:59:39.577549 INFO::Fitting model to feature number 18, F18
+2026-06-05 20:59:39.578578 INFO::Fitting model to feature number 19, F19
+2026-06-05 20:59:39.579604 INFO::Fitting model to feature number 20, F20
+2026-06-05 20:59:39.580629 INFO::Fitting model to feature number 21, F21
+2026-06-05 20:59:39.581648 INFO::Fitting model to feature number 22, F22
+2026-06-05 20:59:39.582663 INFO::Fitting model to feature number 23, F23
+2026-06-05 20:59:39.583688 INFO::Fitting model to feature number 24, F24
+2026-06-05 20:59:39.584724 INFO::Fitting model to feature number 25, F25
+2026-06-05 20:59:39.585743 INFO::Fitting model to feature number 26, F26
+2026-06-05 20:59:39.586785 INFO::Fitting model to feature number 27, F27
+2026-06-05 20:59:39.587802 INFO::Fitting model to feature number 28, F28
+2026-06-05 20:59:39.588815 INFO::Fitting model to feature number 29, F29
+2026-06-05 20:59:39.589829 INFO::Fitting model to feature number 30, F30
+2026-06-05 20:59:39.590896 INFO::Fitting model to feature number 31, F31
+2026-06-05 20:59:39.591945 INFO::Fitting model to feature number 32, F32
+2026-06-05 20:59:39.592988 INFO::Fitting model to feature number 33, F33
+2026-06-05 20:59:39.594043 INFO::Fitting model to feature number 34, F34
+2026-06-05 20:59:39.59509 INFO::Fitting model to feature number 35, F35
+2026-06-05 20:59:39.596138 INFO::Fitting model to feature number 36, F36
+2026-06-05 20:59:39.597216 INFO::Fitting model to feature number 37, F37
+2026-06-05 20:59:39.598252 INFO::Fitting model to feature number 38, F38
+2026-06-05 20:59:39.599289 INFO::Fitting model to feature number 39, F39
+2026-06-05 20:59:39.600337 INFO::Fitting model to feature number 40, F40
+2026-06-05 20:59:39.601377 INFO::Fitting model to feature number 41, F41
+2026-06-05 20:59:39.602421 INFO::Fitting model to feature number 42, F42
+2026-06-05 20:59:39.603459 INFO::Fitting model to feature number 43, F43
+2026-06-05 20:59:39.604507 INFO::Fitting model to feature number 44, F44
+2026-06-05 20:59:39.605546 INFO::Fitting model to feature number 45, F45
+2026-06-05 20:59:39.606589 INFO::Fitting model to feature number 46, F46
+2026-06-05 20:59:39.60763 INFO::Fitting model to feature number 47, F47
+2026-06-05 20:59:39.608675 INFO::Fitting model to feature number 48, F48
+2026-06-05 20:59:39.609718 INFO::Fitting model to feature number 49, F49
+2026-06-05 20:59:39.610774 INFO::Fitting model to feature number 50, F50
+2026-06-05 20:59:39.611803 INFO::Fitting model to feature number 51, F51
+2026-06-05 20:59:39.612826 INFO::Fitting model to feature number 52, F52
+2026-06-05 20:59:39.613841 INFO::Fitting model to feature number 53, F53
+2026-06-05 20:59:39.614862 INFO::Fitting model to feature number 54, F54
+2026-06-05 20:59:39.615872 INFO::Fitting model to feature number 55, F55
+2026-06-05 20:59:39.616884 INFO::Fitting model to feature number 56, F56
+2026-06-05 20:59:39.617933 INFO::Fitting model to feature number 57, F57
+2026-06-05 20:59:39.618949 INFO::Fitting model to feature number 58, F58
+2026-06-05 20:59:39.619955 INFO::Fitting model to feature number 59, F59
+2026-06-05 20:59:39.620961 INFO::Fitting model to feature number 60, F60
+2026-06-05 20:59:39.621977 INFO::Fitting model to feature number 61, F61
+2026-06-05 20:59:39.622983 INFO::Fitting model to feature number 62, F62
+2026-06-05 20:59:39.623993 INFO::Fitting model to feature number 63, F63
+2026-06-05 20:59:39.625013 INFO::Fitting model to feature number 64, F64
+2026-06-05 20:59:39.626038 INFO::Fitting model to feature number 65, F65
+2026-06-05 20:59:39.627061 INFO::Fitting model to feature number 66, F66
+2026-06-05 20:59:39.628086 INFO::Fitting model to feature number 67, F67
+2026-06-05 20:59:39.629109 INFO::Fitting model to feature number 68, F68
+2026-06-05 20:59:39.630133 INFO::Fitting model to feature number 69, F69
+2026-06-05 20:59:39.631171 INFO::Fitting model to feature number 70, F70
+2026-06-05 20:59:39.632219 INFO::Fitting model to feature number 71, F71
+2026-06-05 20:59:39.633232 INFO::Fitting model to feature number 72, F72
+2026-06-05 20:59:39.634258 INFO::Fitting model to feature number 73, F73
+2026-06-05 20:59:39.63529 INFO::Fitting model to feature number 74, F74
+2026-06-05 20:59:39.636316 INFO::Fitting model to feature number 75, F75
+2026-06-05 20:59:39.637339 INFO::Fitting model to feature number 76, F76
+2026-06-05 20:59:39.638375 INFO::Fitting model to feature number 77, F77
+2026-06-05 20:59:39.639403 INFO::Fitting model to feature number 78, F78
+2026-06-05 20:59:39.640432 INFO::Fitting model to feature number 79, F79
+2026-06-05 20:59:39.641453 INFO::Fitting model to feature number 80, F80
+2026-06-05 20:59:39.642477 INFO::Fitting model to feature number 81, F81
+2026-06-05 20:59:39.64351 INFO::Fitting model to feature number 82, F82
+2026-06-05 20:59:39.644562 INFO::Fitting model to feature number 83, F83
+2026-06-05 20:59:39.645586 INFO::Fitting model to feature number 84, F84
+2026-06-05 20:59:39.646612 INFO::Fitting model to feature number 85, F85
+2026-06-05 20:59:39.647631 INFO::Fitting model to feature number 86, F86
+2026-06-05 20:59:39.648664 INFO::Fitting model to feature number 87, F87
+2026-06-05 20:59:39.649685 INFO::Fitting model to feature number 88, F88
+2026-06-05 20:59:39.650733 INFO::Fitting model to feature number 89, F89
+2026-06-05 20:59:39.651821 INFO::Fitting model to feature number 90, F90
+2026-06-05 20:59:39.652836 INFO::Fitting model to feature number 91, F91
+2026-06-05 20:59:39.653872 INFO::Fitting model to feature number 92, F92
+2026-06-05 20:59:39.654887 INFO::Fitting model to feature number 93, F93
+2026-06-05 20:59:39.655904 INFO::Fitting model to feature number 94, F94
+2026-06-05 20:59:39.656928 INFO::Fitting model to feature number 95, F95
+2026-06-05 20:59:39.657951 INFO::Fitting model to feature number 96, F96
+2026-06-05 20:59:39.658993 INFO::Fitting model to feature number 97, F97
+2026-06-05 20:59:39.660044 INFO::Fitting model to feature number 98, F98
+2026-06-05 20:59:39.661088 INFO::Fitting model to feature number 99, F99
+2026-06-05 20:59:39.66212 INFO::Fitting model to feature number 100, F100
+2026-06-05 20:59:39.663155 INFO::Fitting model to feature number 101, F101
+2026-06-05 20:59:39.664198 INFO::Fitting model to feature number 102, F102
+2026-06-05 20:59:39.665226 INFO::Fitting model to feature number 103, F103
+2026-06-05 20:59:39.66627 INFO::Fitting model to feature number 104, F104
+2026-06-05 20:59:39.667316 INFO::Fitting model to feature number 105, F105
+2026-06-05 20:59:39.668346 INFO::Fitting model to feature number 106, F106
+2026-06-05 20:59:39.669392 INFO::Fitting model to feature number 107, F107
+2026-06-05 20:59:39.670437 INFO::Fitting model to feature number 108, F108
+2026-06-05 20:59:39.671469 INFO::Fitting model to feature number 109, F109
+2026-06-05 20:59:39.672511 INFO::Fitting model to feature number 110, F110
+2026-06-05 20:59:39.67354 INFO::Fitting model to feature number 111, F111
+2026-06-05 20:59:39.67458 INFO::Fitting model to feature number 112, F112
+2026-06-05 20:59:39.675594 INFO::Fitting model to feature number 113, F113
+2026-06-05 20:59:39.676611 INFO::Fitting model to feature number 114, F114
+2026-06-05 20:59:39.677634 INFO::Fitting model to feature number 115, F115
+2026-06-05 20:59:39.678665 INFO::Fitting model to feature number 116, F116
+2026-06-05 20:59:39.679683 INFO::Fitting model to feature number 117, F117
+2026-06-05 20:59:39.680711 INFO::Fitting model to feature number 118, F118
+2026-06-05 20:59:39.68173 INFO::Fitting model to feature number 119, F119
+2026-06-05 20:59:39.682751 INFO::Fitting model to feature number 120, F120
+2026-06-05 20:59:39.683769 INFO::Fitting model to feature number 121, F121
+2026-06-05 20:59:39.684799 INFO::Fitting model to feature number 122, F122
+2026-06-05 20:59:39.685832 INFO::Fitting model to feature number 123, F123
+2026-06-05 20:59:39.686853 INFO::Fitting model to feature number 124, F124
+2026-06-05 20:59:39.687881 INFO::Fitting model to feature number 125, F125
+2026-06-05 20:59:39.688925 INFO::Fitting model to feature number 126, F126
+2026-06-05 20:59:39.689963 INFO::Fitting model to feature number 127, F127
+2026-06-05 20:59:39.690991 INFO::Fitting model to feature number 128, F128
+2026-06-05 20:59:39.69203 INFO::Fitting model to feature number 129, F129
+2026-06-05 20:59:39.693056 INFO::Fitting model to feature number 130, F130
+2026-06-05 20:59:39.694075 INFO::Fitting model to feature number 131, F131
+2026-06-05 20:59:39.695106 INFO::Fitting model to feature number 132, F132
+2026-06-05 20:59:39.696141 INFO::Fitting model to feature number 133, F133
+2026-06-05 20:59:39.697162 INFO::Fitting model to feature number 134, F134
+2026-06-05 20:59:39.698192 INFO::Fitting model to feature number 135, F135
+2026-06-05 20:59:39.69922 INFO::Fitting model to feature number 136, F136
+2026-06-05 20:59:39.700241 INFO::Fitting model to feature number 137, F137
+2026-06-05 20:59:39.701292 INFO::Fitting model to feature number 138, F138
+2026-06-05 20:59:39.702329 INFO::Fitting model to feature number 139, F139
+2026-06-05 20:59:39.703353 INFO::Fitting model to feature number 140, F140
+2026-06-05 20:59:39.704366 INFO::Fitting model to feature number 141, F141
+2026-06-05 20:59:39.705382 INFO::Fitting model to feature number 142, F142
+2026-06-05 20:59:39.706402 INFO::Fitting model to feature number 143, F143
+2026-06-05 20:59:39.707414 INFO::Fitting model to feature number 144, F144
+2026-06-05 20:59:39.708432 INFO::Fitting model to feature number 145, F145
+2026-06-05 20:59:39.709448 INFO::Fitting model to feature number 146, F146
+2026-06-05 20:59:39.710488 INFO::Fitting model to feature number 147, F147
+2026-06-05 20:59:39.711522 INFO::Fitting model to feature number 148, F148
+2026-06-05 20:59:39.712539 INFO::Fitting model to feature number 149, F149
+2026-06-05 20:59:39.713587 INFO::Fitting model to feature number 150, F150
+2026-06-05 20:59:39.714601 INFO::Fitting model to feature number 151, F151
+2026-06-05 20:59:39.715631 INFO::Fitting model to feature number 152, F152
+2026-06-05 20:59:39.716654 INFO::Fitting model to feature number 153, F153
+2026-06-05 20:59:39.717664 INFO::Fitting model to feature number 154, F154
+2026-06-05 20:59:39.718701 INFO::Fitting model to feature number 155, F155
+2026-06-05 20:59:39.719758 INFO::Fitting model to feature number 156, F156
+2026-06-05 20:59:39.720899 INFO::Fitting model to feature number 157, F157
+2026-06-05 20:59:39.722016 INFO::Fitting model to feature number 158, F158
+2026-06-05 20:59:39.723071 INFO::Fitting model to feature number 159, F159
+2026-06-05 20:59:39.724139 INFO::Fitting model to feature number 160, F160
+2026-06-05 20:59:39.725207 INFO::Fitting model to feature number 161, F161
+2026-06-05 20:59:39.726251 INFO::Fitting model to feature number 162, F162
+2026-06-05 20:59:39.727351 INFO::Fitting model to feature number 163, F163
+2026-06-05 20:59:39.728454 INFO::Fitting model to feature number 164, F164
+2026-06-05 20:59:39.729547 INFO::Fitting model to feature number 165, F165
+2026-06-05 20:59:39.730653 INFO::Fitting model to feature number 166, F166
+2026-06-05 20:59:39.731787 INFO::Fitting model to feature number 167, F167
+2026-06-05 20:59:39.732886 INFO::Fitting model to feature number 168, F168
+2026-06-05 20:59:39.733979 INFO::Fitting model to feature number 169, F169
+2026-06-05 20:59:39.735058 INFO::Fitting model to feature number 170, F170
+2026-06-05 20:59:39.736165 INFO::Fitting model to feature number 171, F171
+2026-06-05 20:59:39.737323 INFO::Fitting model to feature number 172, F172
+2026-06-05 20:59:39.738441 INFO::Fitting model to feature number 173, F173
+2026-06-05 20:59:39.739569 INFO::Fitting model to feature number 174, F174
+2026-06-05 20:59:39.740728 INFO::Fitting model to feature number 175, F175
+2026-06-05 20:59:39.741915 INFO::Fitting model to feature number 176, F176
+2026-06-05 20:59:39.743005 INFO::Fitting model to feature number 177, F177
+2026-06-05 20:59:39.74413 INFO::Fitting model to feature number 178, F178
+2026-06-05 20:59:39.745356 INFO::Fitting model to feature number 179, F179
+2026-06-05 20:59:39.746504 INFO::Fitting model to feature number 180, F180
+2026-06-05 20:59:39.747684 INFO::Fitting model to feature number 181, F181
+2026-06-05 20:59:39.748872 INFO::Fitting model to feature number 182, F182
+2026-06-05 20:59:39.750016 INFO::Fitting model to feature number 183, F183
+2026-06-05 20:59:39.751167 INFO::Fitting model to feature number 184, F184
+2026-06-05 20:59:39.752296 INFO::Fitting model to feature number 185, F185
+2026-06-05 20:59:39.753521 INFO::Fitting model to feature number 186, F186
+2026-06-05 20:59:39.754652 INFO::Fitting model to feature number 187, F187
+2026-06-05 20:59:39.75578 INFO::Fitting model to feature number 188, F188
+2026-06-05 20:59:39.756882 INFO::Fitting model to feature number 189, F189
+2026-06-05 20:59:39.758124 INFO::Fitting model to feature number 190, F190
+2026-06-05 20:59:39.759469 INFO::Fitting model to feature number 191, F191
+2026-06-05 20:59:39.760955 INFO::Fitting model to feature number 192, F192
+2026-06-05 20:59:39.7624 INFO::Fitting model to feature number 193, F193
+2026-06-05 20:59:39.76378 INFO::Fitting model to feature number 194, F194
+2026-06-05 20:59:39.76495 INFO::Fitting model to feature number 195, F195
+2026-06-05 20:59:39.766313 INFO::Fitting model to feature number 196, F196
+2026-06-05 20:59:39.767675 INFO::Fitting model to feature number 197, F197
+2026-06-05 20:59:39.768967 INFO::Fitting model to feature number 198, F198
+2026-06-05 20:59:39.770311 INFO::Fitting model to feature number 199, F199
+2026-06-05 20:59:39.771566 INFO::Fitting model to feature number 200, F200
+2026-06-05 20:59:39.772676 INFO::Fitting model to feature number 201, F201
+2026-06-05 20:59:39.773726 INFO::Fitting model to feature number 202, F202
+2026-06-05 20:59:39.774783 INFO::Fitting model to feature number 203, F203
+2026-06-05 20:59:39.775836 INFO::Fitting model to feature number 204, F204
+2026-06-05 20:59:39.776987 INFO::Fitting model to feature number 205, F205
+2026-06-05 20:59:39.778148 INFO::Fitting model to feature number 206, F206
+2026-06-05 20:59:39.779268 INFO::Fitting model to feature number 207, F207
+2026-06-05 20:59:39.78047 INFO::Fitting model to feature number 208, F208
+2026-06-05 20:59:39.781703 INFO::Fitting model to feature number 209, F209
+2026-06-05 20:59:39.783006 INFO::Fitting model to feature number 210, F210
+2026-06-05 20:59:39.784156 INFO::Fitting model to feature number 211, F211
+2026-06-05 20:59:39.785443 INFO::Fitting model to feature number 212, F212
+2026-06-05 20:59:39.786618 INFO::Fitting model to feature number 213, F213
+2026-06-05 20:59:39.787758 INFO::Fitting model to feature number 214, F214
+2026-06-05 20:59:39.788858 INFO::Fitting model to feature number 215, F215
+2026-06-05 20:59:39.789932 INFO::Fitting model to feature number 216, F216
+2026-06-05 20:59:39.791071 INFO::Fitting model to feature number 217, F217
+2026-06-05 20:59:39.792165 INFO::Fitting model to feature number 218, F218
+2026-06-05 20:59:39.793237 INFO::Fitting model to feature number 219, F219
+2026-06-05 20:59:39.7943 INFO::Fitting model to feature number 220, F220
+2026-06-05 20:59:39.795341 INFO::Fitting model to feature number 221, F221
+2026-06-05 20:59:39.796436 INFO::Fitting model to feature number 222, F222
+2026-06-05 20:59:39.797494 INFO::Fitting model to feature number 223, F223
+2026-06-05 20:59:39.798536 INFO::Fitting model to feature number 224, F224
+2026-06-05 20:59:39.799576 INFO::Fitting model to feature number 225, F225
+2026-06-05 20:59:39.800619 INFO::Fitting model to feature number 226, F226
+2026-06-05 20:59:39.801651 INFO::Fitting model to feature number 227, F227
+2026-06-05 20:59:39.802688 INFO::Fitting model to feature number 228, F228
+2026-06-05 20:59:39.80372 INFO::Fitting model to feature number 229, F229
+2026-06-05 20:59:39.822952 INFO::Counting total values for each feature
+2026-06-05 20:59:39.837928 INFO::Writing filtered data to file GTDB_Results/maaslin2/U/features/filtered_data.tsv
+2026-06-05 20:59:39.84618 INFO::Writing filtered, normalized data to file GTDB_Results/maaslin2/U/features/filtered_data_norm.tsv
+2026-06-05 20:59:39.854471 INFO::Writing filtered, normalized, transformed data to file GTDB_Results/maaslin2/U/features/filtered_data_norm_transformed.tsv
+2026-06-05 20:59:39.869104 WARNING::Deleting existing residuals file: GTDB_Results/maaslin2/U/fits/residuals.rds
+2026-06-05 20:59:39.869977 INFO::Writing residuals to file GTDB_Results/maaslin2/U/fits/residuals.rds
+2026-06-05 20:59:39.876744 WARNING::Deleting existing fitted file: GTDB_Results/maaslin2/U/fits/fitted.rds
+2026-06-05 20:59:39.877473 INFO::Writing fitted values to file GTDB_Results/maaslin2/U/fits/fitted.rds
+2026-06-05 20:59:39.882948 INFO::Writing all results to file (ordered by increasing q-values): GTDB_Results/maaslin2/U/all_results.tsv
+2026-06-05 20:59:39.887 INFO::Writing the significant results (those which are less than or equal to the threshold of 0.250000 ) to file (ordered by increasing q-values): GTDB_Results/maaslin2/U/significant_results.tsv

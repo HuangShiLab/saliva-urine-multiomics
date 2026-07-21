@@ -1,0 +1,5 @@
+Database	Position	n	mean	median	min	max
+GTDB	Saliva	101	800.1	816	432	1083
+HROM	Saliva	101	1169.3	1195	421	1708
+GTDB	Urine	101	128	121	55	339
+HROM	Urine	101	35.8	28	10	194

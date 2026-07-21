@@ -1,0 +1,227 @@
+## `r site_label` {.tabset}
+
+```{r}
+S      <- prep_site(dat, site, min_prev = 0.10)
+meta   <- S$meta
+clrM   <- clr_transform(S$abund)
+ann    <- function(f) S$tax$Genus[match(f, S$tax$feature)]      # genus annotation
+annP   <- function(f) S$tax$Phylum[match(f, S$tax$feature)]
+TOPN   <- 20
+site_en <- c(S = "Saliva", U = "Urine")[[site]]   # ASCII label for in-plot text (system CJK font segfaults the graphics device)
+# output dirs (db-specific; default to HROM paths so the HROM report is unchanged)
+TAB <- get0("TAB", ifnotfound = "Results/tables")
+FIG <- get0("FIG", ifnotfound = "Results/figures")
+M2  <- get0("M2",  ifnotfound = "Results/maaslin2")
+for (.d in c(TAB, FIG, M2)) dir.create(.d, recursive = TRUE, showWarnings = FALSE)
+knitr::kable(t(as.matrix(table(meta$DiseaseGroup))),
+             caption = sprintf("各疾病组样品数（本位点样品 %d；位点内检出物种 %d；≥10%% 流行率过滤后 %d 个物种用于差异/排序分析）",
+                               nrow(meta), nrow(S$abund_all), nrow(S$abund)))
+```
+
+### Alpha 多样性
+
+跨 5 组比较 + 沿疾病负担梯度（N→P→PD/PC→PCD）的单调趋势检验。
+
+```{r fig.width=8, fig.height=6}
+adf     <- alpha_table(S$abund_all, meta)
+metrics <- c("Observed", "Shannon", "Simpson", "Pielou")
+p_alpha <- ggpubr::ggarrange(plotlist = lapply(metrics, function(m) plot_alpha(adf, m)),
+                             ncol = 2, nrow = 2)
+ggsave(file.path(FIG, paste0(site, "_alpha.png")), p_alpha,
+       width = 8, height = 6, dpi = 150)
+p_alpha
+```
+
+```{r}
+ast <- do.call(rbind, lapply(metrics, function(m) {
+  r <- alpha_stats(adf, m)
+  data.frame(Metric = m, KruskalWallis_p = r$kw_p,
+             Trend_rho = r$trend_rho, Trend_p = r$trend_p)
+}))
+knitr::kable(ast, digits = 4,
+             caption = "Alpha 多样性：5 组 Kruskal-Wallis；以及与疾病负担梯度的 Spearman 趋势")
+knitr::kable(alpha_stats(adf, "Shannon")$dunn[, c("group1","group2","statistic","p","p.adj")],
+             digits = 4, caption = "Shannon — 主要两两比较 Dunn 事后检验（BH 校正）")
+```
+
+### Beta 多样性 / PERMANOVA
+
+分别用 **Bray-Curtis** 与 **Robust Aitchison（rPCA：rclr + PCoA，对成分数据与稀疏零值更稳健）** 两种距离做 PCoA；PERMANOVA 用疾病因子（牙周炎/糖尿病/肾病）的**边际效应**评估各自独立解释的群落差异，并在牙周炎背景内检验 Diabetes×KidneyDisease **交互**；同时给出主要两两比较。
+
+#### Bray-Curtis
+
+```{r fig.width=7, fig.height=5.5}
+beta <- beta_analysis(S$abund_all, meta, dist_method = "bray")
+p_pcoa <- plot_pcoa(beta, paste0(site_en, " - Bray-Curtis PCoA"))
+ggsave(file.path(FIG, paste0(site, "_pcoa.png")), p_pcoa,
+       width = 7, height = 5.5, dpi = 150)
+p_pcoa
+```
+
+```{r}
+knitr::kable(tidy_permanova(beta$permanova), row.names = FALSE, digits = 4,
+             caption = "PERMANOVA（Bray-Curtis，边际效应）：各疾病因子独立解释的群落变异")
+if (!is.null(beta$permanova_int))
+  knitr::kable(tidy_permanova(beta$permanova_int), row.names = FALSE, digits = 4,
+               caption = "牙周炎背景内 Diabetes × KidneyDisease 交互（Bray-Curtis；共病协同的群落水平证据）")
+knitr::kable(pairwise_permanova(beta$dist, meta), row.names = FALSE, digits = 4,
+             caption = "主要两两比较 PERMANOVA（Bray-Curtis，BH 校正）")
+```
+
+#### Robust Aitchison (rPCA)
+
+```{r fig.width=7, fig.height=5.5}
+beta_ra <- beta_analysis(S$abund_all, meta, dist_method = "robust.aitchison")
+p_rpca <- plot_pcoa(beta_ra, paste0(site_en, " - Robust Aitchison PCA (rPCA)"))
+ggsave(file.path(FIG, paste0(site, "_rpca.png")), p_rpca,
+       width = 7, height = 5.5, dpi = 150)
+p_rpca
+```
+
+```{r}
+knitr::kable(tidy_permanova(beta_ra$permanova), row.names = FALSE, digits = 4,
+             caption = "PERMANOVA（Robust Aitchison / rPCA，边际效应）：各疾病因子独立解释的群落变异")
+if (!is.null(beta_ra$permanova_int))
+  knitr::kable(tidy_permanova(beta_ra$permanova_int), row.names = FALSE, digits = 4,
+               caption = "牙周炎背景内 Diabetes × KidneyDisease 交互（rPCA）")
+knitr::kable(pairwise_permanova(beta_ra$dist, meta), row.names = FALSE, digits = 4,
+             caption = "主要两两比较 PERMANOVA（rPCA，BH 校正）")
+```
+
+### 差异丰度：多变量校正
+
+文档"方法 1（最推荐）/Multi-variable model"：`microbe ~ Periodontitis + Diabetes + KidneyDisease + Age + Sex`，给出**控制其他变量后**每个疾病独立关联的菌群（adjusted effect）。下方分别用 **Maaslin2** 与 **ANCOM-BC** 拟合，互为印证。可用协变量仅 Age 与 Sex（见末尾局限）。
+
+#### Maaslin2
+
+```{r}
+m2  <- run_maaslin2(S$abund, meta, file.path(M2, site))
+m2d <- subset(m2, metadata %in% c("Periodontitis","Diabetes","KidneyDisease"))
+m2d$Genus <- ann(m2d$feature)
+write.csv(m2d, file.path(TAB, paste0(site, "_maaslin2.csv")), row.names = FALSE)
+knitr::kable(as.data.frame(table(`显著菌数 q<0.25` = m2d$metadata[m2d$qval < 0.25])),
+             col.names = c("疾病因子", "显著菌数 (q<0.25)"),
+             caption = "Maaslin2：各疾病因子显著关联的物种数")
+m2top <- m2d[order(m2d$qval), c("feature","Genus","metadata","coef","pval","qval")][seq_len(min(TOPN, nrow(m2d))), ]
+knitr::kable(m2top, row.names = FALSE, digits = 4,
+             caption = "Maaslin2：按 q 值排序的 Top 关联（coef>0 表示该疾病因子=1 时升高）")
+```
+
+#### ANCOM-BC
+
+```{r}
+ab <- run_ancombc(S$abund, meta)
+ab_tidy <- do.call(rbind, lapply(c("Periodontitis","Diabetes","KidneyDisease"), function(tm) {
+  data.frame(feature = ab$lfc$taxon, Genus = ann(ab$lfc$taxon), term = tm,
+             lfc = ab$lfc[[tm]], q = ab$q_val[[tm]],
+             diff_abn = ab$diff_abn[[tm]])
+}))
+write.csv(ab_tidy, file.path(TAB, paste0(site, "_ancombc.csv")), row.names = FALSE)
+knitr::kable(as.data.frame(table(`显著菌数 q<0.05` = ab_tidy$term[ab_tidy$q < 0.05])),
+             col.names = c("疾病因子", "显著菌数 (q<0.05)"),
+             caption = "ANCOM-BC：各疾病因子显著关联的物种数（bias-corrected）")
+abtop <- ab_tidy[order(ab_tidy$q), ][seq_len(min(TOPN, nrow(ab_tidy))), ]
+knitr::kable(abtop, row.names = FALSE, digits = 4,
+             caption = "ANCOM-BC：按 q 值排序的 Top 关联（lfc = bias-corrected log-fold change）")
+```
+
+### 差异丰度：主要两两比较
+
+文档"最终推荐 Primary"五组比较：**N vs P / P vs PD / P vs PC / PD vs PCD / PC vs PCD**。采用 **Mann-Whitney 秩和检验**，多重检验用 **DS-FDR**（Jiang et al. 2017, *mSystems*：离散 false-discovery rate，置换法，利用稀疏成分数据的离散性，较 BH 更灵敏，且对低丰度过滤阈值不敏感）；效应方向以 CLR 中位数差（`clr_diff`，正值表示在后者中更高）表示。完整结果已导出至 `Results/tables/`。
+
+```{r}
+wl <- lapply(PRIMARY_COMPARISONS, function(cc) {
+  d <- da_pair_dsfdr(S$abund, clrM, meta, cc[1], cc[2])
+  d$Genus <- ann(d$feature)
+  write.csv(d, file.path(TAB,
+            paste0(site, "_dsfdr_", cc[1], "_vs_", cc[2], ".csv")), row.names = FALSE)
+  d
+})
+names(wl) <- sapply(PRIMARY_COMPARISONS, paste, collapse = " vs ")
+knitr::kable(data.frame(comparison = names(wl),
+                        n_sig_padj0.05 = sapply(wl, function(d) sum(d$padj < 0.05, na.rm = TRUE)),
+                        n_sig_padj0.10 = sapply(wl, function(d) sum(d$padj < 0.10, na.rm = TRUE)),
+                        n_sig_padj0.20 = sapply(wl, function(d) sum(d$padj < 0.20, na.rm = TRUE))),
+             row.names = FALSE, caption = "各主要比较的显著差异物种数（Mann-Whitney + DS-FDR）")
+for (nm in names(wl)) {
+  d <- wl[[nm]]; d <- d[!is.na(d$padj), ]
+  cat("\n\n**", nm, " — Top 差异物种** (glr>0 表示在后者中更高;glr = generalized log-ratio)\n\n", sep = "")
+  print(knitr::kable(head(d[, c("feature","Genus","glr","p","padj")], 10),
+                     row.names = FALSE, digits = 4))
+}
+```
+
+**五个主要比较的 generalized log-ratio 热图**：每行一个比较，每列一个物种，颜色为 **generalized log-ratio（gLR，crossRanger `BetweenGroup.test`，稳健的组间 log10 fold-change）**（>0 表示在该比较的**后者**中更高），`*` 标注 **padj<0.2**（DS-FDR）。列为在任一比较中显著（padj<0.2）的物种（按显著性取前 45 个；若过少则补足最接近显著者），并按 gLR 模式聚类排序。
+
+```{r out.width="100%"}
+hp <- plot_pairwise_heatmap(wl, sig_th = 0.20,
+        title = paste0(site_en, " - pairwise gen. log-ratio heatmap (* padj<0.2)"))
+hpath <- file.path(FIG, paste0(site, "_pairwise_heatmap.png"))
+ggsave(hpath, hp, width = max(7, min(17, 0.26 * attr(hp, "ncol") + 3)),
+       height = 3.6, dpi = 150)
+knitr::include_graphics(normalizePath(hpath))
+```
+
+### 差异丰度：LEfSe 生物标志物
+
+LEfSe（Kruskal-Wallis + Wilcoxon + LDA，`LDA>2`）对每个主要两两比较做判别性生物标志物发现。
+
+```{r}
+lf <- lapply(PRIMARY_COMPARISONS, function(cc) {
+  r <- run_lefser_pair(S$abund, meta, cc[1], cc[2])
+  if (is.null(r) || nrow(r) == 0) return(NULL)
+  data.frame(comparison = paste(cc, collapse = " vs "),
+             feature = r$Names, Genus = ann(r$Names), LDA = r$scores,
+             enriched_in = ifelse(r$scores > 0, cc[2], cc[1]))
+})
+lf_all <- do.call(rbind, lf[!sapply(lf, is.null)])
+if (!is.null(lf_all)) write.csv(lf_all, file.path(TAB, paste0(site, "_lefse.csv")), row.names = FALSE)
+knitr::kable(data.frame(comparison = sapply(PRIMARY_COMPARISONS, paste, collapse = " vs "),
+                        n_biomarkers = sapply(lf, function(x) if (is.null(x)) 0 else nrow(x))),
+             row.names = FALSE, caption = "各主要比较的 LEfSe 生物标志物数（LDA>2）")
+```
+
+```{r fig.width=8, fig.height=7}
+np <- lf[[1]]                                   # N vs P (牙周炎 signature)
+if (!is.null(np) && nrow(np) > 0) {
+  np <- np[order(-abs(np$LDA)), ]; np <- head(np, 25)
+  np <- np[order(np$LDA), ]; np$feature <- factor(np$feature, levels = np$feature)
+  print(
+    ggplot(np, aes(feature, LDA, fill = enriched_in)) +
+      geom_col() + coord_flip() +
+      scale_fill_manual(values = c(N = unname(GROUP_COLORS["N"]), P = unname(GROUP_COLORS["P"]))) +
+      labs(title = paste0(site_en, " - LEfSe: N vs P periodontitis signature (Top 25 |LDA|)"),
+           x = NULL, y = "LDA score (>0: enriched in P; <0: enriched in N)") +
+      theme_bw(base_size = 10)
+  )
+} else cat("N vs P 无通过阈值的 LEfSe 生物标志物。\n")
+```
+
+### 疾病负担趋势
+
+沿 N→P→PD/PC→PCD 梯度，逐物种 CLR 丰度与负担分的 Spearman 相关（BH 校正），识别随疾病复杂度单调升/降的菌。
+
+```{r}
+tr <- trend_taxa(clrM, meta); tr$Genus <- ann(tr$feature); tr$Phylum <- annP(tr$feature)
+write.csv(tr, file.path(TAB, paste0(site, "_trend.csv")), row.names = FALSE)
+cat(sprintf("随疾病负担显著单调变化的物种数（padj<0.05）：**%d**（上升 %d / 下降 %d）。\n\n",
+            sum(tr$padj < 0.05, na.rm = TRUE),
+            sum(tr$padj < 0.05 & tr$rho > 0, na.rm = TRUE),
+            sum(tr$padj < 0.05 & tr$rho < 0, na.rm = TRUE)))
+knitr::kable(head(tr[, c("feature","Genus","Phylum","rho","p","padj")], TOPN),
+             row.names = FALSE, digits = 4, caption = "趋势最强的 Top 物种（rho>0 随负担升高）")
+```
+
+### 共病协同效应
+
+文档亮点 `PCD − PD − PC + P`：在牙周炎背景内拟合 `CLR ~ Diabetes * KidneyDisease`，交互项即该对比，检验"糖尿病+肾病同时存在是否超出单病相加"。
+
+```{r}
+ic <- interaction_contrast(clrM, meta); ic$Genus <- ann(ic$feature)
+write.csv(ic, file.path(TAB, paste0(site, "_synergy.csv")), row.names = FALSE)
+cat(sprintf("存在显著协同效应（交互项 padj<0.05）的物种数：**%d**。\n\n",
+            sum(ic$padj < 0.05, na.rm = TRUE)))
+knitr::kable(head(ic[, c("feature","Genus","synergy","p","padj")], TOPN),
+             row.names = FALSE, digits = 4,
+             caption = "协同对比 (PCD−PD−PC+P) Top 物种（synergy>0 表示共病超加性升高）")
+```

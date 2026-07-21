@@ -1,0 +1,55 @@
+"feature","site","subgroup","n_case","log2FC","p"
+"P_Propionic acid","Saliva","P",12,0.166964995905971,0.990158010176156
+"P_N-lauroylethanolamine","Saliva","P",12,0.195500612617295,0.776550032382158
+"N_2-Hydroxyphenylacetic acid","Saliva","P",12,-1.27258944322598,0.1595362965204
+"P_(E)-1-(4-methylquinazolin-2(1H)-ylidene)guanidine","Saliva","P",12,0.0228380353952673,0.647783983525666
+"P_2-(methyl(2H-pyrazolo[3,4-d]pyrimidin-4-yl)amino)ethanol","Saliva","P",12,-0.00472706780350052,1
+"P_N-(4-((6aR,8aS)-4-hydroxy-6a,8a,9-trimethyl-3,4,5,6,6a,6b,7,8,8a,8b,11a,12,12a,12b-tetradecahydro-1H-naphtho[2',1':4,5]indeno[2,1-b]furan-10-yl)-2-methylbutyl)acetamide","Saliva","P",12,-0.977879951910126,0.275684833056812
+"P_N,N-Dimethyltetradecylamine-N-oxide","Saliva","P",12,0.157038971458295,0.931187709567084
+"P_Harman","Saliva","P",12,-2.42473608967752,0.167192011539916
+"P_Tri-isobutylphosphate","Saliva","P",12,-0.00840840257571784,0.757688083221973
+"P_Propionic acid","Saliva","PC",25,-0.851772347117187,2.41634276008123e-08
+"P_N-lauroylethanolamine","Saliva","PC",25,-0.449298753546383,0.00781433206320263
+"N_2-Hydroxyphenylacetic acid","Saliva","PC",25,-1.16355701821048,0.0219180576760841
+"P_(E)-1-(4-methylquinazolin-2(1H)-ylidene)guanidine","Saliva","PC",25,-1.50180657939632,1.01420632139259e-08
+"P_2-(methyl(2H-pyrazolo[3,4-d]pyrimidin-4-yl)amino)ethanol","Saliva","PC",25,-0.670972501856419,0.000672920066827457
+"P_N-(4-((6aR,8aS)-4-hydroxy-6a,8a,9-trimethyl-3,4,5,6,6a,6b,7,8,8a,8b,11a,12,12a,12b-tetradecahydro-1H-naphtho[2',1':4,5]indeno[2,1-b]furan-10-yl)-2-methylbutyl)acetamide","Saliva","PC",25,-6.61747065386245,0.00227078961777372
+"P_N,N-Dimethyltetradecylamine-N-oxide","Saliva","PC",25,-0.286679526077695,0.00430953630423683
+"P_Harman","Saliva","PC",25,-2.2326127294817,0.0737805669225026
+"P_Tri-isobutylphosphate","Saliva","PC",25,1.86725374176369,3.19505236610284e-07
+"P_Propionic acid","Saliva","PCD",24,-0.845452374519816,3.3925988322121e-07
+"P_N-lauroylethanolamine","Saliva","PCD",24,-0.331387000843364,0.0257246223778238
+"N_2-Hydroxyphenylacetic acid","Saliva","PCD",24,-0.342800580921676,0.188954351542626
+"P_(E)-1-(4-methylquinazolin-2(1H)-ylidene)guanidine","Saliva","PCD",24,-1.33883386635994,1.17059064784313e-10
+"P_2-(methyl(2H-pyrazolo[3,4-d]pyrimidin-4-yl)amino)ethanol","Saliva","PCD",24,-0.737861491370889,3.3925988322121e-07
+"P_N-(4-((6aR,8aS)-4-hydroxy-6a,8a,9-trimethyl-3,4,5,6,6a,6b,7,8,8a,8b,11a,12,12a,12b-tetradecahydro-1H-naphtho[2',1':4,5]indeno[2,1-b]furan-10-yl)-2-methylbutyl)acetamide","Saliva","PCD",24,-5.44195191821616,0.00421124833841042
+"P_N,N-Dimethyltetradecylamine-N-oxide","Saliva","PCD",24,-0.259515399452059,0.00260293746301679
+"P_Harman","Saliva","PCD",24,-2.53724389458253,0.0246607031893417
+"P_Tri-isobutylphosphate","Saliva","PCD",24,1.58327963628222,4.75268690038945e-09
+"P_Propionic acid","Urine","P",12,-0.0266951117550889,0.683732478622871
+"P_N-lauroylethanolamine","Urine","P",12,-0.430078472667205,0.512432576907137
+"N_2-Hydroxyphenylacetic acid","Urine","P",12,0.413765518678783,0.465661934504699
+"P_(E)-1-(4-methylquinazolin-2(1H)-ylidene)guanidine","Urine","P",12,-0.145052420455244,0.911596745867693
+"P_2-(methyl(2H-pyrazolo[3,4-d]pyrimidin-4-yl)amino)ethanol","Urine","P",12,-0.275894098816647,0.291953126129321
+"P_N-(4-((6aR,8aS)-4-hydroxy-6a,8a,9-trimethyl-3,4,5,6,6a,6b,7,8,8a,8b,11a,12,12a,12b-tetradecahydro-1H-naphtho[2',1':4,5]indeno[2,1-b]furan-10-yl)-2-methylbutyl)acetamide","Urine","P",12,-1.37642613261953,0.107307196226515
+"P_N,N-Dimethyltetradecylamine-N-oxide","Urine","P",12,-0.0842910321273287,0.512432576907137
+"P_Harman","Urine","P",12,-2.05776462585554,0.00975443313095874
+"P_Tri-isobutylphosphate","Urine","P",12,0.130310731495115,0.795540948089327
+"P_Propionic acid","Urine","PC",25,-0.714633122056167,0.00453571245222066
+"P_N-lauroylethanolamine","Urine","PC",25,-0.69958309945649,0.0210171129809056
+"N_2-Hydroxyphenylacetic acid","Urine","PC",25,-0.434158964241675,0.00193156394525405
+"P_(E)-1-(4-methylquinazolin-2(1H)-ylidene)guanidine","Urine","PC",25,-0.857740320057431,0.000275190817694873
+"P_2-(methyl(2H-pyrazolo[3,4-d]pyrimidin-4-yl)amino)ethanol","Urine","PC",25,-0.661726778856039,0.00944460167842805
+"P_N-(4-((6aR,8aS)-4-hydroxy-6a,8a,9-trimethyl-3,4,5,6,6a,6b,7,8,8a,8b,11a,12,12a,12b-tetradecahydro-1H-naphtho[2',1':4,5]indeno[2,1-b]furan-10-yl)-2-methylbutyl)acetamide","Urine","PC",25,-2.25296164628188,0.000536484310044172
+"P_N,N-Dimethyltetradecylamine-N-oxide","Urine","PC",25,-0.459979073971468,0.0872689805821519
+"P_Harman","Urine","PC",25,-1.24251403582877,0.0620217230238569
+"P_Tri-isobutylphosphate","Urine","PC",25,1.72121321521254,0.000257490466000211
+"P_Propionic acid","Urine","PCD",24,-0.480749647807365,0.013268422264053
+"P_N-lauroylethanolamine","Urine","PCD",24,-0.572051997494743,0.0329606751287739
+"N_2-Hydroxyphenylacetic acid","Urine","PCD",24,-0.43507914415121,0.0291532833220848
+"P_(E)-1-(4-methylquinazolin-2(1H)-ylidene)guanidine","Urine","PCD",24,-0.149741205862817,0.254582069650329
+"P_2-(methyl(2H-pyrazolo[3,4-d]pyrimidin-4-yl)amino)ethanol","Urine","PCD",24,-0.116926203474598,0.318746472616111
+"P_N-(4-((6aR,8aS)-4-hydroxy-6a,8a,9-trimethyl-3,4,5,6,6a,6b,7,8,8a,8b,11a,12,12a,12b-tetradecahydro-1H-naphtho[2',1':4,5]indeno[2,1-b]furan-10-yl)-2-methylbutyl)acetamide","Urine","PCD",24,-1.78350072106282,0.00262952208400118
+"P_N,N-Dimethyltetradecylamine-N-oxide","Urine","PCD",24,-0.428208032136475,0.0469730496604269
+"P_Harman","Urine","PCD",24,-0.831347113300129,0.419164213666197
+"P_Tri-isobutylphosphate","Urine","PCD",24,1.41423356795995,0.00138156300402705

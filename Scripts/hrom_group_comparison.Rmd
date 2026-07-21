@@ -1,0 +1,163 @@
+---
+title: "牙周炎–糖尿病–肾病 共病微生物组分组比较分析"
+subtitle: "基于 HROM 数据库的注释结果（唾液 / 尿液 分位点）"
+date: "`r format(Sys.Date())`"
+knit: '(function(input, ...) { proj <- normalizePath(file.path(dirname(input), "..")); rmarkdown::render(input, encoding = "UTF-8", knit_root_dir = proj, output_dir = file.path(proj, "Results"), output_file = sub("[.][Rr]md$", ".html", basename(input))) })'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.align = "center", dpi = 110)
+options(knitr.duplicate.label = "allow")     # allow re-knitting the per-site child
+suppressMessages(source("Scripts/analysis_helpers.R"))
+library(knitr)
+for (d in c("Results/figures", "Results/tables", "Results/maaslin2"))
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+dat   <- load_data("Data")
+SITES <- c(S = "唾液 Saliva", U = "尿液 Urine")
+```
+
+# 分析设计与方法
+
+本报告依据**HROM 数据库**的物种注释结果，**分唾液（S）与尿液（U）两个位点**分别实现文档列出的分析框架。
+
+## 分组与疾病编码
+
+每位受试者同时有唾液与尿液样品（样品名数字 = 受试者编号，S/U = 位点）。疾病组由 `meta.txt` 的 `Group` 去掉位点前缀得到：
+
+```{r groups}
+gt <- as.data.frame.matrix(table(dat$meta$DiseaseGroup, dat$meta$Position))
+gt <- cbind(疾病组 = rownames(gt), gt)
+defs <- c(N = "正常组", P = "单纯牙周炎（无慢病）",
+          PD = "牙周炎+2型糖尿病(伴其他慢病Ch)",
+          PC = "牙周炎+肾病(伴Ch)", PCD = "牙周炎+糖尿病肾病(伴Ch)")
+gt$说明 <- defs[gt$疾病组]
+knitr::kable(gt, row.names = FALSE, caption = "各疾病组样品数（每个位点 n=101）")
+```
+
+由分组派生三个二元疾病指示变量（用于多变量校正模型）：
+
+| 疾病组 | Periodontitis | Diabetes | KidneyDisease |
+|:---:|:---:|:---:|:---:|
+| N | 0 | 0 | 0 |
+| P | 1 | 0 | 0 |
+| PD | 1 | 1 | 0 |
+| PC | 1 | 0 | 1 |
+| PCD | 1 | 1 | 1 |
+
+疾病负担梯度（趋势分析）：N(0) → P(1) → PD/PC(2) → PCD(3)。
+
+## 比较框架
+
+- **主要两两比较（Primary）**：`N vs P`（牙周炎 signature）、`P vs PD`（糖尿病附加效应）、`P vs PC`（肾病附加效应）、`PD vs PCD`、`PC vs PCD`（双重共病附加效应）。
+- **趋势分析（Trend）**：沿 N→P→PD/PC→PCD 的负担梯度。
+- **交互/协同（Interaction）**：`PCD − PD − PC + P`，检验糖尿病×肾病的 microbiome 协同。
+- **多变量校正模型（Multi-variable，最重要）**：`microbe ~ Periodontitis + Diabetes + KidneyDisease + Age + Sex`，得到控制其他变量后的 adjusted effect。
+
+## 方法与数据要点
+
+- **数据性质**：HROM 表为**相对丰度**（每个样品列和=1），非原始计数。存在判定为相对丰度 >0。
+- **过滤**：位点内检出（>0）的物种用于 alpha 多样性；差异/排序分析额外做 ≥10% 流行率过滤。
+- **Alpha 多样性**：Observed/Shannon/Simpson/Pielou（vegan）；Kruskal-Wallis + Dunn(BH) + 负担梯度 Spearman 趋势。Chao1 需计数、不适用于相对丰度，故略。
+- **Beta 多样性**：**Bray-Curtis** 与 **Robust Aitchison（rPCA：vegan `rclr` + PCoA，对成分数据与稀疏零值更稳健，遵循 DEICODE 的稳健 Aitchison 排序思路）** 两种距离的 PCoA；PERMANOVA（`adonis2`，边际效应）+ 牙周炎背景内 `Diabetes*KidneyDisease` 交互 + 主要两两比较。先做**唾液+尿液合并分析**评估采样位点（body site）效应，再分位点深入。
+- **差异丰度**：多变量校正用 **Maaslin2**（`normalization=NONE, transform=LOG`）与 **ANCOM-BC**（对相对丰度按 1e6 伪计数输入，见局限）；主要两两比较用 **Mann-Whitney + DS-FDR**（Jiang et al. 2017, *mSystems*：离散 false-discovery rate，置换法，利用稀疏成分数据的离散性，较 BH 更灵敏）；并用 **LEfSe**（LDA>2）做生物标志物发现。
+- **协同效应**：牙周炎背景内 `CLR ~ Diabetes*KidneyDisease` 的交互项即 `PCD−PD−PC+P`。
+
+> **重要局限（须写入 manuscript）**：(1) 除 P 组外各疾病组均伴其他慢病（Ch），故结果应表述为 *disease-associated comorbidity states*，而非单一疾病的纯净效应；(2) **PD 组 n=6**，是最大统计瓶颈，相关结果仅作 effect size/trend 解读，勿过度诠释；(3) `meta.txt` 仅含 Age 与 Sex，文档建议的 BMI/吸烟/高血压/eGFR/HbA1c 等协变量**不可得**，多变量模型仅校正 Age+Sex；(4) N 组更年轻、女性比例更高，与疾病组存在年龄/性别混杂；(5) 多重检验校正：per-taxon **两两比较用 DS-FDR**（Jiang et al. 2017，离散 FDR，置换法，针对微生物组稀疏离散数据，较 BH 更灵敏且对低丰度过滤不敏感），**Maaslin2/ANCOM-BC 及趋势/协同/PERMANOVA/alpha 用 BH-FDR**；均控制 FDR 而非 FWER（不再使用 Bonferroni——其对数千稀疏物种过保守，几乎检不出显著菌）。
+
+---
+
+# 唾液与尿液合并分析（Saliva + Urine combined）
+
+在分位点深入分析之前，先将两位点全部样品合并，评估**采样位点（body site）本身**在多大程度上塑造微生物组，作为后续分位点分析的背景。预期位点是最大的变异来源（唾液与尿液群落差异极大）。
+
+```{r combined-prep}
+cmb     <- prep_combined(dat, min_prev = 0.10)
+metrics <- c("Observed", "Shannon", "Simpson", "Pielou")
+```
+
+## Alpha 多样性（唾液 vs 尿液）
+
+```{r combined-alpha, fig.width=8, fig.height=6}
+adf_c <- alpha_table(cmb$abund_all, cmb$meta)
+p_calpha <- ggpubr::ggarrange(plotlist = lapply(metrics, function(m) plot_alpha_position(adf_c, m)),
+                              ncol = 2, nrow = 2)
+ggsave("Results/figures/combined_alpha.png", p_calpha, width = 8, height = 6, dpi = 150)
+p_calpha
+```
+
+```{r combined-alpha-stats}
+ast_c <- do.call(rbind, lapply(metrics, function(m) {
+  s <- adf_c[[m]][adf_c$Position == "S"]; u <- adf_c[[m]][adf_c$Position == "U"]
+  w <- suppressWarnings(wilcox.test(s, u))
+  data.frame(Metric = m, Saliva_median = round(median(s), 3),
+             Urine_median = round(median(u), 3), Wilcoxon_p = w$p.value)
+}))
+knitr::kable(ast_c, digits = 4,
+             caption = "Alpha 多样性：唾液 vs 尿液（Wilcoxon 秩和检验）")
+```
+
+## Beta 多样性 / PERMANOVA（位点 + 疾病因子）
+
+合并样品的 PCoA 与 PERMANOVA（边际效应）同时纳入**采样位点**与三个疾病因子，评估各自独立解释的群落变异；分别用 **Bray-Curtis** 与 **Robust Aitchison（rPCA）** 两种距离，颜色表示位点。
+
+```{r combined-beta, fig.width=12, fig.height=5}
+cb_bray <- beta_analysis(cmb$abund_all, cmb$meta, dist_method = "bray",
+                         perm_terms = c("Position","Periodontitis","Diabetes","KidneyDisease"),
+                         interaction = FALSE)
+cb_rpca <- beta_analysis(cmb$abund_all, cmb$meta, dist_method = "robust.aitchison",
+                         perm_terms = c("Position","Periodontitis","Diabetes","KidneyDisease"),
+                         interaction = FALSE)
+p_cbray <- plot_pcoa(cb_bray, "Combined - Bray-Curtis PCoA",
+                     color_by = "Position", shape_by = "DiseaseGroup", palette = POSITION_COLORS)
+p_crpca <- plot_pcoa(cb_rpca, "Combined - Robust Aitchison PCA (rPCA)",
+                     color_by = "Position", shape_by = "DiseaseGroup", palette = POSITION_COLORS)
+p_cbeta <- ggpubr::ggarrange(p_cbray, p_crpca, ncol = 2, common.legend = TRUE, legend = "bottom")
+ggsave("Results/figures/combined_pcoa.png", p_cbeta, width = 12, height = 5, dpi = 150)
+p_cbeta
+```
+
+```{r combined-permanova}
+knitr::kable(tidy_permanova(cb_bray$permanova), row.names = FALSE, digits = 4,
+             caption = "合并样品 PERMANOVA（Bray-Curtis，边际效应）：位点与各疾病因子独立解释的群落变异")
+knitr::kable(tidy_permanova(cb_rpca$permanova), row.names = FALSE, digits = 4,
+             caption = "合并样品 PERMANOVA（Robust Aitchison / rPCA，边际效应）")
+```
+
+---
+
+# 分位点深入分析（Saliva / Urine separately）
+
+```{r run-sites, results='asis'}
+out <- lapply(names(SITES), function(s) {
+  knitr::knit_child(
+    "Scripts/_site_section.Rmd",
+    envir = list2env(list(site = s, site_label = SITES[[s]], dat = dat),
+                     parent = globalenv()),
+    quiet = TRUE)
+})
+cat(unlist(out), sep = "\n\n")
+```
+
+---
+
+# 输出文件
+
+- **图**：合并 `Results/figures/combined_alpha.png`、`combined_pcoa.png`；分位点 `Results/figures/{S,U}_alpha.png`、`{S,U}_pcoa.png`（Bray-Curtis）、`{S,U}_rpca.png`（Robust Aitchison / rPCA）、`{S,U}_pairwise_heatmap.png`（两两比较 CLR 差异热图）
+- **表**（每个位点）：`Results/tables/{S,U}_maaslin2.csv`、`_ancombc.csv`、`_lefse.csv`、`_trend.csv`、`_synergy.csv`、`_dsfdr_<g1>_vs_<g2>.csv`（5 个主要比较）
+- **Maaslin2 完整输出**：`Results/maaslin2/{S,U}/`
+
+# 会话信息
+
+```{r session}
+sessionInfo()
+```

@@ -1,0 +1,3 @@
+Position	comparison	n_pairs	median_GTDB	median_HROM	wilcox_p
+Saliva	GTDB vs HROM (paired)	101	816	1195	3.432e-18
+Urine	GTDB vs HROM (paired)	101	121	28	2.699e-18

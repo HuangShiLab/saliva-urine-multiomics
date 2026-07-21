@@ -1,0 +1,730 @@
+---
+title: "唾液 → 尿液 跨位点多组学关联分析"
+subtitle: "微生物组与代谢组的跨体液互作（基于 `r params$db` 物种注释）"
+date: "`r format(Sys.Date())`"
+params:
+  db: "GTDB"
+  saliva_mic: "Data/microbiome_data/Saliva_GTDB_abd.txt"
+  urine_mic: "Data/microbiome_data/Urine_GTDB_abd.txt"
+  outdir: "GTDB_Results/crossomics"
+  drop_groups: !r character(0)
+knit: '(function(input, ...) { proj <- normalizePath(file.path(dirname(input), "..")); rmarkdown::render(input, encoding = "UTF-8", knit_root_dir = proj, output_dir = file.path(proj, "GTDB_Results"), output_file = sub("[.][Rr]md$", ".html", basename(input))) })'
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.align = "center", dpi = 120)
+options(knitr.duplicate.label = "allow")
+suppressMessages(source("Scripts/crossomics_helpers.R"))
+library(knitr); library(kableExtra)
+FIG <- file.path(params$outdir, "figures"); TAB <- file.path(params$outdir, "tables")
+dir.create(FIG, recursive = TRUE, showWarnings = FALSE)
+dir.create(TAB, recursive = TRUE, showWarnings = FALSE)
+# save a PNG (for the PPT) AND draw the plot inline so knitr self-contains it
+savefig <- function(p, name, w = 7, h = 5) {
+  ggsave(file.path(FIG, name), p, width = w, height = h, dpi = 130)
+  print(p); invisible(NULL)
+}
+kb <- function(df, cap, dig = 3) df |>
+  kable("html", caption = cap, digits = dig, row.names = FALSE) |>
+  kable_styling(bootstrap_options = c("striped","hover","condensed"),
+                full_width = FALSE, font_size = 13)
+```
+
+# 研究背景与分析框架
+
+本报告参照 **Zhang et al., *Microbiome* (2026) 14:147 ——《Cross‑body site microbial
+interactions influence the human plasma metabolome》** 的分析思路，将其
+*口腔 → 肠道 → 血浆代谢物* 的「跨体位轴」框架，迁移到本队列的
+**唾液（口腔，近端）→ 尿液（系统/远端，distal）** 方向，系统评估两体液之间
+**微生物组与代谢组的跨位点互作**。
+
+队列为 **牙周炎–糖尿病–肾病共病**研究：每位受试者同时采集唾液与尿液，并测定
+两体液的 **微生物组（`r params$db` 物种注释）** 与 **代谢组（LC‑MS 正/负离子模式）**。
+疾病组编码：N（正常）、P（牙周炎）、PD（牙周炎+糖尿病）、PC（牙周炎+肾病）、
+PCD（牙周炎+糖尿病肾病）。
+
+## 四项分析（均为 唾液 → 尿液 方向）
+
+| 编号 | 分析 | 暴露(X，唾液) | 结局(Y，尿液) | 对应论文方法 |
+|:--:|:--|:--|:--|:--|
+| 一 | 微生物组 → 微生物组 | 唾液物种 | 尿液物种 | Mantel / Procrustes / PERMANOVA |
+| 二 | 微生物组 → 代谢组 | 唾液物种 | 尿液代谢物 | 相关网络 / GBDT(R²) |
+| 三 | 代谢组 → 代谢组 | 唾液代谢物 | 尿液代谢物 | 距离一致性 / 机器学习预测 |
+| 四 | 三层中介 | 唾液物种 → 尿液物种 → 尿液代谢物 | | 双向中介分析(mediation) |
+
+## 每个组合统一执行的方法（对应论文）
+
+1. **整体一致性（对称）**：**Mantel 检验**（Spearman，距离矩阵相关）与 **Procrustes/protest**（排序构型叠合），均 999 次置换。
+2. **方差解释（Y~X，非对称）**：**PERMANOVA**（`vegan::adonis2`）与 **dbRDA**（`vegan::dbrda`），均以唾液端主坐标轴为预测变量，量化可解释的尿液端变异比例 R²。
+3. **特征–特征相关网络**：Spearman 相关，沿用论文阈值 **|r| ≥ 0.3 且 P < 0.05**（同时给出 BH‑FDR 结果），构建二部相关网络（`igraph`/`ggraph`）。
+4. **机器学习预测（GBDT 类比）**：以唾液端全特征预测尿液端高变异特征，5 折交叉验证 RandomForest，报告逐特征交叉验证 R²。
+
+> 上述前两类共 **四种"整体评价"方法**（Mantel / Procrustes / PERMANOVA / dbRDA）在每个组合中并列给出，
+> 它们的特点与正确解读见下一节。
+
+> **方法学注记**：微生物组使用 **物种水平相对丰度**（`r params$db` 物种；
+> **流行度+丰度联合过滤**——在 **≥5% 样本中相对丰度 >0.01%** 才保留，既挽救稀有但可信的种
+> （尤其低生物量尿液），又剔除一次性/痕量噪声；保留种/株级分辨率以捕获牙周致病种）；
+> Bray–Curtis 距离用于一致性，CLR 变换用于相关与机器学习。代谢组合并正/负离子特征，
+> `log2(x+1)` 变换；距离用 z‑score 后欧氏距离；相关网络与机器学习使用**全部代谢物特征**。
+> 受本机图形设备对中日韩字体的限制，所有 **图片内文字为英文**，正文与表格为中文。
+
+```{r load-data}
+meta <- load_subject_meta()
+# optional group exclusion (e.g. drop the n=6 PD group). Applied BEFORE any
+# feature filtering / variance ranking so every filter is computed on exactly
+# the samples that will be analysed.
+KEEP <- rownames(meta)[!(as.character(meta$DiseaseGroup) %in% params$drop_groups)]
+meta <- meta[KEEP, , drop = FALSE]
+meta$DiseaseGroup <- droplevels(meta$DiseaseGroup)
+# microbiome: species relative abundance (prevalence+abundance filter: RA>0.01% in >=5% samples)
+SM   <- load_microbiome(params$saliva_mic, keep = KEEP)
+UM   <- load_microbiome(params$urine_mic,  keep = KEEP)
+# metabolome: full (for distance) and top-400 variance (for network/RF)
+Smet <- load_metabolome("Data/metabolome_data/pos_saliva_named.csv",
+                        "Data/metabolome_data/neg_saliva_named.csv", keep = KEEP)
+Umet <- load_metabolome("Data/metabolome_data/pos_urin_named.csv",
+                        "Data/metabolome_data/neg_urin_named.csv", keep = KEEP)
+# Smet_r <- load_metabolome("Data/metabolome_data/pos_saliva_named.csv",
+#                           "Data/metabolome_data/neg_saliva_named.csv", top_var = 400)
+# Umet_r <- load_metabolome("Data/metabolome_data/pos_urin_named.csv",
+#                           "Data/metabolome_data/neg_urin_named.csv", top_var = 400)
+Smet_r <- Smet
+Umet_r <- Umet
+# CLR versions for correlation / RF
+SM_clr <- clr_mat(SM$rel); UM_clr <- clr_mat(UM$rel)
+```
+
+```{r drop-note, results='asis', echo=FALSE}
+if (length(params$drop_groups) > 0)
+  cat(sprintf(paste0("> **⚠️ 本报告已排除 %s 组**（样本量不足、统计把握度过低）。",
+      "剩余 **%d** 位受试者进入全部分析；**所有特征过滤（流行度+丰度）与方差排序均在剩余样本上重新计算**，",
+      "而非沿用全样本的筛选结果，因此特征数与全样本版报告不同属预期。\n\n"),
+      paste(params$drop_groups, collapse = "/"), length(KEEP)))
+```
+
+```{r data-overview}
+ov <- data.frame(
+  数据层 = c("唾液微生物组","尿液微生物组","唾液代谢组","尿液代谢组"),
+  特征数 = c(nrow(SM$rel), nrow(UM$rel), nrow(Smet$log2), nrow(Umet$log2)),
+  特征类型 = c("物种(≥5%样本&RA>0.01%)","物种(≥5%样本&RA>0.01%)",
+               "代谢物(正+负)","代谢物(正+负)"),
+  样本数 = c(ncol(SM$rel), ncol(UM$rel), ncol(Smet$log2), ncol(Umet$log2)))
+kb(ov, sprintf("各数据层维度（%d 位受试者跨四层完全匹配）", length(KEEP)), dig = 0)
+gt <- as.data.frame(table(疾病组 = meta$DiseaseGroup), responseName = "样本数")
+kb(gt, "疾病分组样本数（每受试者唾液/尿液配对）", dig = 0)
+```
+
+# 四种评价方法：特点与正确解读
+
+评估"唾液端与尿液端是否/多大程度相关"有多种统计工具。本报告并列使用四种，
+它们其实回答**两类不同的问题**，每类两种实现：
+
+| 方法 | 检验什么 | 输入 | 关键输出 | 方向性 |
+|:--|:--|:--|:--|:--:|
+| **Mantel test** | 两个**距离矩阵**是否相关 | Dx、Dy | Mantel r（矩阵相关）、置换 P | 对称 |
+| **Procrustes (protest)** | 两个**排序构型**旋转缩放后能否重合 | PCoA(Dx)、PCoA(Dy) | Procrustes r、m²(残差平方和)、P | 对称 |
+| **PERMANOVA (adonis2)** | X 能解释 Y **多少多元方差**、质心是否不同 | Dy ~ 唾液主坐标轴 | pseudo-F、**R²**、置换 P | Y~X |
+| **dbRDA** | 同上，并给出**约束排序** | Dy ~ 唾液主坐标轴 | 约束惯量比例 **R²**、F、P、约束轴 | Y~X |
+
+## 各方法的特点
+
+**① Mantel test（矩阵相关 · 对称）**
+比较两个**距离矩阵**本身：唾液中两两越相似的个体，尿液中是否也越相似。
+*优势*：直接作用于距离，可比较任意两种组学/任意距离，无需降维。
+*陷阱*：统计功效偏低、常**低估**真实关联；存在系统/空间结构时 I 类错误可能膨胀；
+Mantel r 的绝对值通常远小于普通相关系数，**不要照搬 Pearson r 的经验**（r=0.3 已算可观）。
+
+**② Procrustes / protest（构型叠合 · 对称）**
+把两套 PCoA 坐标经平移/旋转/缩放最优叠合，看能多大程度重合。
+*优势*：通常比 Mantel **更稳、功效更高**；能逐样本看残差（哪些个体两层最不一致），有直观叠合图。
+*陷阱*：结果依赖保留的排序维度数 k（本报告 k=5）；只反映所选维度张成的**构型相似**，非线性关系不在其内。
+
+**③ PERMANOVA / adonis2（方差分解 · Y~X）**
+把尿液距离矩阵的总变异按预测变量（唾液主坐标轴）做置换式方差分解。
+*优势*：给出明确的"**解释方差比例 R²**"；可纳入多个/连续/分类预测变量与协变量。
+*陷阱*：对**组内离散度差异（dispersion）敏感**——显著未必是质心位移，可能是离散度不同（分类设计需配合 `betadisper`）；R² 会随预测变量个数虚高（本报告固定 8 轴）。
+
+**④ dbRDA（距离型冗余分析 · Y~X）**
+与 PERMANOVA 同一个"距离型线性模型"，但产出**约束排序**（可看是哪些维度在驱动、可作双标图、支持偏分析控制协变量）。
+
+## 如何正确解读
+
+- **看方向性配对**：Mantel/Procrustes 是**对称**的"构型一致性"（两层互为对照，无因果方向）；
+  PERMANOVA/dbRDA 是**非对称**的"X 解释 Y 的方差"（本报告固定 唾液→尿液）。
+- **看数值含义**：Mantel r / Procrustes r 是**相关强度**（越接近 1 越一致）；
+  PERMANOVA / dbRDA 的 **R² 是"被解释的方差比例"**（如 0.17 = 17%）；两者量纲不同，不可直接比大小。
+- **看显著性**：四个 P 均来自置换检验；P<0.05 表示观测到的相关/解释力显著高于随机重排。
+- **⚠ 最关键的一点**：**PERMANOVA 与 dbRDA 在相同预测+距离下是同一个模型**——
+  `adonis2` 是该方差分解的置换检验，`dbrda` 给出对应的约束排序，二者的 **R²/F/P 必然基本一致**
+  （见各组合表格），所以它们**不是两份独立证据**。真正互补的是：
+  「Mantel ↔ Procrustes」（对称一致性的两种实现）与「PERMANOVA ↔ dbRDA」（非对称方差解释的两种实现）。
+  四法结论一致时最稳；但若只有 PERMANOVA/dbRDA 显著而 Mantel/Procrustes 不显著，
+  往往说明"少数强相关特征驱动了可解释方差，但整体构型并不一致"。
+
+# 分析一：唾液微生物组 → 尿液微生物组
+
+```{r p1-compute}
+P1 <- analyze_pairing(SM$rel, UM$rel, "microbiome", "microbiome",
+                      SM_clr, UM_clr, n_target = 30)
+```
+
+## 整体一致性（Mantel + Procrustes）
+
+```{r p1-congruence}
+kb(four_method_table(P1), "四种方法评价：唾液↔尿液微生物组")
+savefig(plot_procrustes(P1$cg, meta,
+        "Saliva vs Urine microbiome (Procrustes)"), "P1_procrustes.png", 6.5, 4.2)
+```
+
+唾液与尿液微生物组的整体群落结构 **几乎不一致**（Mantel r 接近 0，置换 P 不显著），
+说明口腔与泌尿道是 **相对独立的微生物生态系统**——这与论文中口腔–肠道沿消化道
+紧密耦合的情形形成对照。
+
+## 特征–特征相关网络
+
+```{r p1-network, fig.width=10, fig.height=6.5}
+cc <- P1$cc
+net1 <- data.frame(
+  指标 = c("检验对数(物种×物种)","显著对(|r|≥0.3,P<0.05)","显著对(BH-FDR<0.05)"),
+  数值 = c(cc$n_tested, nrow(cc$sig_nom), nrow(cc$sig)))
+kb(net1, "唾液物种 × 尿液物种 相关统计", dig = 0)
+savefig(plot_cross_network(cc$sig_nom, "species", "species",
+        title = "Saliva species -> Urine species network"), "P1_network.png", 10, 6.5)
+top1 <- head(cc$sig_nom, 12); colnames(top1) <- c("唾液物种","尿液物种","r","P","FDR")
+write.csv(cc$sig_nom, file.path(TAB, "P1_sig_pairs.csv"), row.names = FALSE)
+kb(top1, "相关最强的唾液↔尿液物种对（前 12）")
+```
+
+尽管整体群落不一致，仍存在 **`r nrow(cc$sig_nom)` 对**物种水平的显著局部关联
+（多为弱–中等强度），提示个别物种可能经由系统循环或共同宿主因素在两体液间联动。
+
+## 机器学习预测（RandomForest，交叉验证 R²）
+
+```{r p1-rf}
+rf <- P1$rf
+kb(data.frame(指标 = c("预测目标(高变异尿液物种)","平均CV R²","中位CV R²","R²>5% 比例"),
+              数值 = c(length(rf$r2), round(rf$mean,3), round(rf$median,3),
+                       round(rf$frac_pos5,2))),
+   "以唾液微生物组预测尿液物种的可解释力", dig = 3)
+```
+
+# 分析二：唾液微生物组 → 尿液代谢组
+
+```{r p2-compute}
+P2 <- analyze_pairing(SM$rel, Umet$log2, "microbiome", "metabolome",
+                      SM_clr, Umet_r$log2, n_target = 30)
+```
+
+## 整体一致性
+
+```{r p2-congruence}
+kb(four_method_table(P2), "四种方法评价：唾液微生物组 ↔ 尿液代谢组")
+savefig(plot_procrustes(P2$cg, meta,
+        "Saliva microbiome vs Urine metabolome (Procrustes)"), "P2_procrustes.png", 6.5, 4.2)
+```
+
+## 特征–特征相关网络（物种 × 代谢物）
+
+```{r p2-network, fig.width=10, fig.height=6.5}
+cc <- P2$cc
+kb(data.frame(指标 = c("检验对数","显著对(|r|≥0.3,P<0.05)","显著对(FDR<0.05)"),
+              数值 = c(cc$n_tested, nrow(cc$sig_nom), nrow(cc$sig))),
+   "唾液物种 × 尿液代谢物 相关统计", dig = 0)
+savefig(plot_cross_network(cc$sig_nom, "species", "metabolite",
+        title = "Saliva species -> Urine metabolite network", max_edges = 300),
+      "P2_network.png", 10, 6.5)
+write.csv(cc$sig_nom, file.path(TAB, "P2_sig_pairs.csv"), row.names = FALSE)
+top2 <- head(cc$sig_nom, 12); top2$to <- clean_name(top2$to)
+colnames(top2) <- c("唾液物种","尿液代谢物","r","P","FDR")
+kb(top2, "相关最强的 物种↔代谢物 对（前 12）")
+```
+
+唾液微生物组与尿液代谢组存在 **`r nrow(cc$sig_nom)` 对**显著关联，远多于物种–物种层，
+提示 **口腔菌群对远端代谢表型的影响可能比对远端菌群组成的影响更直接**
+（与论文「组成不必然决定功能」的观点一致）。
+
+## 机器学习预测
+
+```{r p2-rf}
+rf <- P2$rf
+kb(data.frame(指标 = c("预测目标(高变异尿液代谢物)","平均CV R²","中位CV R²","R²>5% 比例"),
+              数值 = c(length(rf$r2), round(rf$mean,3), round(rf$median,3),
+                       round(rf$frac_pos5,2))),
+   "以唾液微生物组预测尿液代谢物的可解释力", dig = 3)
+```
+
+# 分析三：唾液代谢组 → 尿液代谢组
+
+```{r p3-compute}
+P3 <- analyze_pairing(Smet$log2, Umet$log2, "metabolome", "metabolome",
+                      Smet_r$log2, Umet_r$log2, n_target = 30)
+```
+
+## 整体一致性
+
+```{r p3-congruence}
+kb(four_method_table(P3), "四种方法评价：唾液代谢组 ↔ 尿液代谢组")
+savefig(plot_procrustes(P3$cg, meta,
+        "Saliva vs Urine metabolome (Procrustes)"), "P3_procrustes.png", 6.5, 4.2)
+```
+
+唾液与尿液 **代谢组高度一致**（Mantel/Procrustes 显著，dbRDA R² 最高），
+是四类关系中 **最强的跨体液轴**——反映两体液共享大量系统循环代谢物。
+
+## 特征–特征相关网络（代谢物 × 代谢物）
+
+```{r p3-network, fig.width=10, fig.height=6.5}
+cc <- P3$cc
+kb(data.frame(指标 = c("检验对数","显著对(|r|≥0.3,P<0.05)","显著对(FDR<0.05)"),
+              数值 = c(cc$n_tested, nrow(cc$sig_nom), nrow(cc$sig))),
+   "唾液代谢物 × 尿液代谢物 相关统计", dig = 0)
+savefig(plot_cross_network(cc$sig_nom, "metabolite", "metabolite",
+        title = "Saliva metabolite -> Urine metabolite network", max_edges = 300),
+      "P3_network.png", 10, 6.5)
+write.csv(cc$sig_nom, file.path(TAB, "P3_sig_pairs.csv"), row.names = FALSE)
+top3 <- head(cc$sig_nom, 12); top3$from <- clean_name(top3$from); top3$to <- clean_name(top3$to)
+colnames(top3) <- c("唾液代谢物","尿液代谢物","r","P","FDR")
+kb(top3, "相关最强的 代谢物↔代谢物 对（前 12）")
+```
+
+## 机器学习预测
+
+```{r p3-rf}
+rf <- P3$rf
+kb(data.frame(指标 = c("预测目标(高变异尿液代谢物)","平均CV R²","中位CV R²","R²>5% 比例"),
+              数值 = c(length(rf$r2), round(rf$mean,3), round(rf$median,3),
+                       round(rf$frac_pos5,2))),
+   "以唾液代谢组预测尿液代谢物的可解释力", dig = 3)
+# R2 distribution figure
+rdf <- data.frame(R2 = rf$r2)
+pr <- ggplot(rdf, aes(R2)) +
+  geom_histogram(bins = 25, fill = "#00A087", colour = "white") +
+  geom_vline(xintercept = 0.05, linetype = 2, colour = "#E64B35") +
+  labs(title = "CV R2 of saliva-metabolome -> urine-metabolite RF models",
+       x = "cross-validated R2", y = "metabolites") + theme_bw(base_size = 11)
+savefig(pr, "P3_rf_R2hist.png", 6, 3.6)
+```
+
+# 逐特征 PERMANOVA：每个显著特征的 R²
+
+前面的 PERMANOVA 用唾液端 **整体结构**（主坐标轴）解释尿液端方差。这里按论文做法
+（adonis2，individual features as predictors），对 **每一个唾液特征** 单独做
+`adonis2(尿液距离矩阵 ~ 单个特征)`，得到该特征 **单独可解释的尿液变异比例 R²** 与置换 P；
+保留显著特征（P<0.05），用 **histogram** 展示其 R² 分布。
+
+> 实现：基于 McArdle–Anderson 的 Gower 矩阵二次型，对全部特征向量化（每次置换一次矩阵乘法），
+> 结果与 `vegan::adonis2`（单连续预测变量）逐位一致，但数千特征仅需 ~1 秒。
+
+```{r perfeat-compute}
+PF1 <- permanova_per_feature(P1$Dy, SM$rel)      # 唾液物种 → 尿液微生物组距离
+PF2 <- permanova_per_feature(P2$Dy, SM$rel)      # 唾液物种 → 尿液代谢组距离
+PF3 <- permanova_per_feature(P3$Dy, Smet$log2)   # 唾液代谢物 → 尿液代谢组距离
+for (nm in c("PF1","PF2","PF3"))
+  write.csv(get(nm), file.path(TAB, paste0(nm, "_permanova_perfeature.csv")), row.names = FALSE)
+
+sm_pf <- function(pf, lab) {
+  s <- pf[pf$p < 0.05, ]
+  data.frame(组合 = lab, 检验特征数 = nrow(pf), `显著数(P<0.05)` = nrow(s),
+             显著占比 = round(mean(pf$p < 0.05), 3),
+             `显著R²中位` = round(median(s$R2), 4),
+             `显著R²最大` = round(max(s$R2), 4),
+             `ΣR²(朴素累加·含冗余可>1)` = round(sum(s$R2), 3), check.names = FALSE)
+}
+kb(rbind(sm_pf(PF1, "① 唾液物种→尿液微生物组"),
+         sm_pf(PF2, "② 唾液物种→尿液代谢组"),
+         sm_pf(PF3, "③ 唾液代谢物→尿液代谢组")),
+   "逐特征 PERMANOVA 汇总（每个特征单独解释尿液端的 R²）")
+```
+
+> **关于"ΣR²(朴素累加)"**：它是把各显著特征**单独**的 R² 直接相加。由于特征间高度共线/信息冗余，
+> 同一份尿液变异被反复计数，**这个和可以 > 1（如 ③ 可达 ~10），不能当作真实总解释度**。
+> 真实"联合解释度"必须来自**一个多元模型** `adonis2(尿液距离 ~ X1 + … + Xk)`，见下。
+
+## 联合（多元）PERMANOVA 的真实 R²
+
+```{r perfeat-joint}
+J1 <- permanova_joint(P1$Dy, SM$rel,   PF1)
+J2 <- permanova_joint(P2$Dy, SM$rel,   PF2)
+J3 <- permanova_joint(P3$Dy, Smet$log2, PF3)
+JT <- rbind(cbind(组合 = "①微→微", J1), cbind(组合 = "②微→代", J2),
+            cbind(组合 = "③代→代", J3))
+disp <- data.frame(
+  组合 = JT$组合, `显著特征数` = JT$n_sig,
+  `ΣR²(朴素累加)` = JT$naive_sum_R2,
+  `全特征联合R²` = ifelse(JT$full_degenerate, "1.0 (退化:p≥n)", as.character(JT$full_R2)),
+  `去共线联合R²(前若干PC)` = paste0(JT$joint_R2_pca, " (", JT$pc_q, "PC, P=", JT$joint_p_pca, ")"),
+  check.names = FALSE)
+kb(disp, "三类组合的联合 PERMANOVA R²（朴素累加 vs 全特征 vs 去共线）")
+```
+
+**怎么读这张表（关键）：**
+
+- **ΣR²(朴素累加)**：单变量 R² 之和,**含大量重复计数,③ 高达 ~10**——只反映"显著特征多、彼此共表达强",**不是**真实解释度。
+- **全特征联合 R²**：把全部显著特征放进一个 `adonis2`。当**显著特征数 ≥ 样本数**（③:331 ≥ 101）时模型**退化**,R² 被迫=1、残差自由度=0,**无意义**;只有当显著特征数 < 样本数（①②）时才可用,但预测变量越多 R² 也越虚高。
+- **去共线联合 R²**：先把显著特征压成**前 10 个主成分**（正交、个数 ≪ 样本数）再做 `adonis2`——这是**有界、可汇报**的真实联合解释度（见上表,均 P<0.05,数量级约 **10–25%**）。保留的主成分越多该值越高,但始终 ∈ [0,1];③ 的值与分析三中基于唾液主坐标轴的 dbRDA（R²≈0.17）量级一致。
+
+> **汇报口径建议**：不要写"累计解释 1016.9%";应写"逐特征检验中 N 个特征各自显著（其单变量 R² 累加因共线性溢出至 X，仅反映冗余）;去共线后的多元 PERMANOVA 显示这些特征**联合解释尿液代谢组约 Y%**（P<0.05）"。
+
+## 论文式累计方差解释 + bootstrap 95% CI
+
+完全对应 **Zhang et al. Fig 2a** 的"variance explained"做法,但适配我们较小的样本量:
+**①逐特征 `adonis2` 海选显著特征(P<0.05) → ②把显著特征压成前 10 个主成分后放进一个
+联合 `adonis2` 求累计 R²(共享方差只计一次,有界) → ③对个体做无放回再抽样(f=0.85)得 95% CI**。
+
+> 与论文的两点差异(均因 n=101 ≪ 论文 n=435):(a) 论文直接把全部显著**菌属**放进联合模型
+> (属数少,k≪n);我们的显著特征(尤其代谢物 k=331>n)会使全特征模型退化,故先用主成分降维;
+> (b) 论文用**有放回 bootstrap**,但对距离矩阵重抽样会因样本重复产生零距离、虚高 R²,故我们改用
+> **无放回再抽样**得到更可信、能包住点估计的 CI。
+
+```{r perfeat-cumulative, fig.width=7.5, fig.height=3}
+CUM <- rbind(
+  cbind(组合 = "① 唾液菌→尿菌",   permanova_cumulative(P1$Dy, SM$rel,   PF1)),
+  cbind(组合 = "② 唾液菌→尿代谢", permanova_cumulative(P2$Dy, SM$rel,   PF2)),
+  cbind(组合 = "③ 唾液代谢→尿代谢", permanova_cumulative(P3$Dy, Smet$log2, PF3)))
+disp <- data.frame(
+  组合 = CUM$组合, `显著特征数` = CUM$n_sig, `主成分数` = CUM$pc_q,
+  `累计R²` = sprintf("%.1f%%", 100 * CUM$R2),
+  `95%CI` = sprintf("%.1f%% – %.1f%%", 100 * CUM$ci_lo, 100 * CUM$ci_hi),
+  P = CUM$p, check.names = FALSE)
+write.csv(CUM, file.path(TAB, "permanova_cumulative_R2.csv"), row.names = FALSE)
+kb(disp, "论文式累计方差解释（联合 PERMANOVA + 无放回再抽样 95% CI）")
+
+CUM$pairing <- c("(1) Saliva microbe -> Urine microbe",
+                 "(2) Saliva microbe -> Urine metab",
+                 "(3) Saliva metab -> Urine metab")            # ASCII for the plot
+savefig(plot_cumulative_R2(CUM, sprintf("Cumulative variance explained (paper-style, %s)", params$db)),
+        "permanova_cumulative_R2.png", 7.5, 3)
+```
+
+**直接可比的数字**：**②「唾液微生物组 → 尿液代谢组」≈ `r sprintf("%.1f%%", 100*CUM$R2[2])`（95% CI `r sprintf("%.1f–%.1f%%", 100*CUM$ci_lo[2], 100*CUM$ci_hi[2])`, P=`r CUM$p[2]`）**——这正是论文 Fig 2a「某体位菌群解释血浆代谢组」的同类指标(论文口腔 14.70%、肠道 18.44%)。三个组合在固定 10 个主成分下数量级相近(~20–25%);注意这是**保守、去共线**的口径,保留更多主成分该值会上升但 ∈[0,1]。
+
+## 显著特征 R² 的 histogram
+
+```{r perfeat-hist, fig.width=7, fig.height=7}
+PFall <- rbind(
+  transform(PF1[PF1$p < 0.05, ], pairing = "(1) Saliva species -> Urine microbiome"),
+  transform(PF2[PF2$p < 0.05, ], pairing = "(2) Saliva species -> Urine metabolome"),
+  transform(PF3[PF3$p < 0.05, ], pairing = "(3) Saliva metabolite -> Urine metabolome"))
+ph <- ggplot(PFall, aes(R2)) +
+  geom_histogram(binwidth = max(PFall$R2) / 30, boundary = 0,
+                 fill = "#00A087", colour = "white") +
+  facet_wrap(~ pairing, scales = "free_y", ncol = 1) +   # shared x-axis, free y (counts differ)
+  scale_x_continuous(limits = c(0, max(PFall$R2) * 1.02)) +
+  labs(title = "Per-feature PERMANOVA R2 (significant features, P<0.05)",
+       x = "R2 explained in the urine distance matrix", y = "number of features") +
+  theme_bw(base_size = 11)
+savefig(ph, "perfeature_permanova_hist.png", 7, 7)
+```
+
+每个面板是该组合中 **所有显著特征**（P<0.05）单独解释尿液端距离矩阵的 R² 分布。
+绝大多数显著特征的 **单特征 R² 都很小**（多在 2–5%）——这是高维组学的常态：
+跨体液信号由 **大量小贡献特征** 共同构成，而非少数主导特征。代谢物层（③）显著特征
+更多、R² 整体更高，再次印证代谢组是最强的跨体液轴。
+
+```{r perfeat-top}
+top_pf <- function(pf, lab, k = 8) {
+  s <- pf[order(-pf$R2), ][seq_len(k), ]
+  data.frame(组合 = lab, 特征 = clean_name(s$feature), R2 = round(s$R2, 4),
+             P = signif(s$p, 2), check.names = FALSE)
+}
+kb(rbind(top_pf(PF2, "②微→代"), top_pf(PF3, "③代→代")),
+   "单特征 R² 最高的特征（②、③ 各前 8）")
+```
+
+# 候选代谢物筛选：健康/疾病有差异 且 两部位共享
+
+**目的（面向后续动物实验验证）**：找出既能在**唾液和尿液两个部位都测到**（同一离子模式、同一代谢物名），
+又能**区分健康（N, n=34）与疾病（P/PD/PC/PCD, n=67）**的代谢物。这类分子同时具备
+「系统性（跨体液共享）」与「疾病相关性」，是最值得买标准品做动物验证的候选。
+
+> 方法：两部位取交集得共享代谢物 → 每个部位内做 Wilcoxon 秩和检验（疾病 vs 健康）+ BH-FDR；
+> log2FC = median(疾病) − median(健康)。**要求两部位变化方向一致**（同升或同降），
+> 以排除只在单一体液出现的局部效应。
+
+```{r shared-disease}
+SD <- shared_disease_test(Smet$log2, Umet$log2, meta)
+write.csv(SD, file.path(TAB, "shared_disease_metabolites.csv"), row.names = FALSE)
+cnt <- data.frame(
+  指标 = c("两部位共享代谢物", "其中可检验(非恒定)", "唾液 疾病vs健康 P<0.05", "唾液 FDR<0.05",
+           "尿液 疾病vs健康 P<0.05", "尿液 FDR<0.05",
+           "两部位均 P<0.05", "两部位均 P<0.05 且同向"),
+  数值 = c(nrow(SD), sum(is.finite(SD$saliva_p) & is.finite(SD$urine_p)),
+           sum(SD$saliva_p < .05, na.rm = TRUE), sum(SD$saliva_fdr < .05, na.rm = TRUE),
+           sum(SD$urine_p < .05, na.rm = TRUE), sum(SD$urine_fdr < .05, na.rm = TRUE),
+           sum(SD$saliva_p < .05 & SD$urine_p < .05, na.rm = TRUE),
+           sum(SD$saliva_p < .05 & SD$urine_p < .05 & SD$same_dir, na.rm = TRUE)))
+kb(cnt, "共享 × 疾病差异 筛选统计", dig = 0)
+```
+
+```{r shared-fc-plot, fig.width=7, fig.height=5}
+savefig(plot_shared_fc(SD, sprintf("Shared metabolites: saliva vs urine disease effect (%s)", params$db)),
+        "shared_disease_scatter.png", 7, 5)
+```
+
+散点图每点是一个**共享代谢物**：横轴=唾液的疾病效应，纵轴=尿液的疾病效应。
+落在**同一象限**（右上或左下）说明两部位变化方向一致；红色点为两部位均显著且同向的候选。
+
+## 候选清单
+
+```{r shared-cand}
+CAND <- SD[which(SD$saliva_p < .05 & SD$urine_p < .05 & SD$same_dir), ]
+CAND <- CAND[order(CAND$saliva_p), ]
+write.csv(CAND, file.path(TAB, "shared_disease_candidates.csv"), row.names = FALSE)
+show <- data.frame(代谢物 = substr(CAND$name, 1, 34),
+                   方向 = ifelse(CAND$saliva_log2FC > 0, "疾病↑", "疾病↓"),
+                   唾液log2FC = round(CAND$saliva_log2FC, 2), 唾液P = signif(CAND$saliva_p, 2),
+                   唾液FDR = signif(CAND$saliva_fdr, 2),
+                   尿液log2FC = round(CAND$urine_log2FC, 2), 尿液P = signif(CAND$urine_p, 2),
+                   尿液FDR = signif(CAND$urine_fdr, 2), check.names = FALSE)
+kb(show, "共享 + 两部位均显著 + 同向 的候选代谢物")
+```
+
+```{r shared-cand-box, fig.width=11, fig.height=6}
+# 显示【全部】候选（勿截断：否则会漏掉排序靠后但生物学重要的候选），
+# 并按【优先程度】从左到右排列：优先(内源可购) → 待确证 → 排除(外源污染)
+CANDo <- order_candidates(CAND)
+LAB   <- candidate_labels(CANDo)
+write.csv(CANDo, file.path(TAB, "shared_disease_candidates.csv"), row.names = FALSE)
+savefig(plot_candidate_box(Smet$log2, Umet$log2, meta, CANDo$feature,
+        sprintf("Candidate metabolites by priority, healthy vs disease (%s)", params$db), LAB,
+        ncol = 5),
+        "shared_disease_boxplots.png", 11, 6)
+```
+
+**分布形态与结论（看图要点）**：
+
+- **优先候选 `[OK]`（丙酸、2‑羟基苯乙酸、N‑月桂酰乙醇胺）**：箱体**紧凑、无零值堆积**，
+  健康→疾病位移虽小但**稳定一致**（两体液同向下降）→ **可信,优先选靶**。
+- **待确证 `[?]`**：其中 `N-(4-((6aR,8aS)-4-hydroxy…` 箱体从 ~0 跨到 25、疾病组下四分位压到 **0**
+  （即 log2(0+1)，大量未检出）→ 其惊人的 log2FC ≈ −5.2 **更可能是检出率/零值伪影,而非真实浓度差**。
+- **排除 `[X]`（Tri‑isobutylphosphate）**：分布干净、统计极强（P=2.9e‑06），但它是**工业增塑剂/阻燃剂**，
+  疾病↑更可能反映**暴露或塑料耗材污染** → 不可作为干预靶点。
+
+> **核心教训**：**统计上最强的两个恰恰最不该买**。候选必须按
+> 「**内源性 / 可购 / 已确证**」分层，而不能只按 p 值取前 N 个——否则最容易被
+> 「零值伪影」与「外源污染物」误导。
+
+## 疾病亚组特异性（P / PD / PC / PCD 各自 vs 健康）
+
+前面的筛选把 4 个疾病组合并成"疾病"。这里拆开看：候选代谢物是**共病通用**的，
+还是**某一病种特异**的？这决定动物模型该选牙周炎单病还是共病模型。
+
+```{r subgroup-screen, fig.width=9.5, fig.height=6.2}
+SG <- subgroup_screen(Smet$log2, Umet$log2, meta, CANDo$feature)
+write.csv(SG, file.path(TAB, "candidate_subgroup_screen.csv"), row.names = FALSE)
+LABC <- candidate_labels(CANDo, width = 22, max_lines = 1)   # compact axis labels
+savefig(plot_subgroup_heat(SG, LABC,
+        sprintf("Candidate metabolites by disease subgroup (%s)", params$db)),
+        "candidate_subgroup_heat.png", 9.5, 6.2)
+```
+
+```{r subgroup-tab}
+sgw <- SG[SG$feature %in% CANDo$feature[CANDo$tier == "priority"], ]
+sgw$显著 <- ifelse(is.na(sgw$p), "", ifelse(sgw$p < .05, "*", ""))
+tb <- data.frame(代谢物 = substr(clean_name(sgw$feature), 1, 26), 部位 = sgw$site,
+                 亚组 = sgw$subgroup, n = sgw$n_case,
+                 log2FC = round(sgw$log2FC, 2), P = signif(sgw$p, 2), 显著 = sgw$显著,
+                 check.names = FALSE)
+kb(tb, "三个优先候选在各疾病亚组的表现（* P<0.05 vs 健康 N）")
+```
+
+> **注意样本量**：P n=12、**PD n=6**、PC n=25、PCD n=24（对照 N n=34）。
+> **PD 组仅 6 例,严重把握度不足**——该组"不显著"不能解释为"无效应"。
+
+### ★ 关键发现：候选是**肾病相关**，而非牙周炎本身
+
+三个优先候选的显著效应**全部只出现在 PC 与 PCD**——这两组正是**含肾病**的组
+（PC=牙周炎+肾病、PCD=牙周炎+糖尿病肾病）；而 P（单纯牙周炎）与 PD（牙周炎+糖尿病，无肾病）均无。
+
+**这不是样本量造成的假象**——比较效应量本身即可区分：
+
+| 丙酸 log2FC | P (n=12) | PD (n=6) | PC (n=25) | PCD (n=24) |
+|:--|:--:|:--:|:--:|:--:|
+| 唾液 | **+0.17** | −0.47 | **−0.85** | **−0.85** |
+| 尿液 | **−0.03** | −0.44 | **−0.71** | **−0.48** |
+
+在 P 组丙酸的效应量**几乎为零(甚至反向)**，而非"有效应但没测显著"；
+PD 组效应量居中、方向一致，属**把握度不足**，不能排除糖尿病的贡献。
+
+> **对动物实验的直接含义**：主模型应以 **慢性肾病(CKD)** 为核心
+> （腺嘌呤饮食或 5/6 肾切除），而非单纯结扎性牙周炎；
+> 牙周炎更适合作为**叠加因素**构建共病模型。这与我们最初"以牙周炎为主模型"的设想相反，
+> 是本节最有价值的转向。
+
+## 肾病梯度趋势与独立性检验
+
+**⚠️ 数据可得性声明**：本队列**没有 eGFR / 肌酐 / BUN 等任何连续肾功能指标**
+（`metadata代谢+微生物.xlsx` 仅有 牙周炎/肾病/糖尿病/慢病 的 0/1 标记）。
+因此**无法做真正的 eGFR 分级趋势**。我们改用三项更严格、且数据支持的检验：
+
+1. **有序梯度趋势**（Jonckheere–Terpstra）：0 无肾病(N/P/PD) → 1 肾病(PC) → 2 糖尿病肾病(PCD)。
+   单调的"剂量–反应"关系比二分类差异更有说服力。
+2. **仅在牙周炎人群内比较**（P+PD vs PC+PCD，n=18 vs 49）：**所有人都有牙周炎**，
+   因此差异只能来自肾病 → 彻底排除"牙周炎驱动"的解释。
+3. **多变量校正**：`代谢物 ~ 肾病 + 牙周炎 + 糖尿病 + 年龄 + 性别`，看肾病是否**独立**显著。
+
+```{r kidney-trend, fig.width=8, fig.height=4.6}
+PRI <- CANDo$feature[CANDo$tier == "priority"]
+KT  <- suppressWarnings(kidney_trend_test(Smet$log2, Umet$log2, meta, PRI))
+write.csv(KT, file.path(TAB, "kidney_gradient_tests.csv"), row.names = FALSE)
+kb(data.frame(代谢物 = substr(clean_name(KT$feature), 1, 24), 部位 = KT$site,
+              `JT趋势P` = signif(KT$JT_p, 2), `ρ` = round(KT$spearman_rho, 2),
+              `牙周炎人群内log2FC` = round(KT$perioOnly_log2FC, 2),
+              `牙周炎人群内P` = signif(KT$perioOnly_p, 2),
+              `校正后肾病β` = round(KT$adj_kidney_beta, 2),
+              `校正后P` = signif(KT$adj_kidney_p, 2), check.names = FALSE),
+   "肾病梯度趋势 + 独立性检验（三个优先候选）")
+savefig(plot_kidney_gradient(Smet$log2, Umet$log2, meta, PRI, LAB[PRI],
+        sprintf("Priority candidates across kidney-severity grade (%s)", params$db)),
+        "kidney_gradient.png", 8, 4.6)
+```
+
+### 结论：丙酸是唯一三项全部通过的候选
+
+- **丙酸**：唾液呈**极强单调趋势**（JT P=9.9e-09, ρ=−0.58）；在**都患牙周炎的人群内**仍显著
+  （−0.60, P=3.2e-05）；**校正牙周炎+糖尿病+年龄+性别后仍独立显著**（β=−0.74, P=0.0002）。
+  尿液方向一致（趋势 P=2.9e-03），校正后为边缘（P=0.094）。
+- **N-月桂酰乙醇胺**：唾液三项均通过（校正后 P=0.006），但**尿液不稳**（校正后 ns）。
+- **2-羟基苯乙酸**：**唾液无趋势**（JT P=0.11）、校正后两体液均 ns → **应从优先级降级**。
+
+> **净结果**：肾病梯度分析不仅夯实了"肾病相关"，还**在三个候选之间做出了判别**——
+> **丙酸是证据链最完整、最值得优先投入动物实验的靶点**。
+
+### 候选的可用性判读（选购标准品前必读）
+
+并非所有统计候选都适合买来做动物实验，需按**「是否内源性、是否可购、是否已确证」**分层。
+下表**逐个列出本次全部 `r nrow(CANDo)` 个候选**（自动分层 + 逐条生物学注释，随候选集变化而更新）：
+
+```{r cand-triage}
+tierlab <- c(priority = "✅ 优先(内源·可购·机制清晰)",
+             unconfirmed = "⚠️ 待确证(须 MS/MS)",
+             exclude = "⚠️ 排除(外源污染)")
+triage <- data.frame(
+  优先级 = sprintf("%d", seq_len(nrow(CANDo))),
+  分层 = tierlab[as.character(CANDo$tier)],
+  代谢物 = substr(clean_name(CANDo$feature), 1, 30),
+  方向 = ifelse(CANDo$saliva_log2FC > 0, "疾病↑", "疾病↓"),
+  生物学注释 = metabolite_note(CANDo$feature), check.names = FALSE)
+kb(triage, sprintf("全部 %d 个候选的分层判读与逐条注释", nrow(CANDo)))
+```
+
+```{r cand-triage-summary, results='asis', echo=FALSE}
+pr <- clean_name(CANDo$feature[CANDo$tier == "priority"])
+un <- clean_name(CANDo$feature[CANDo$tier == "unconfirmed"])
+ex <- clean_name(CANDo$feature[CANDo$tier == "exclude"])
+cat(sprintf(paste0(
+  "> **结论**：进入动物验证的**优先候选**为 **%s**（%d 个，均在疾病中变化方向一致），",
+  "提示“疾病伴随保护性代谢物耗竭”，可直接推导**补充干预**的验证假说。\n>\n",
+  "> **待确证**（%d 个：%s）仅为谱库匹配名，**须先用标准品比对保留时间 + 二级谱确认身份**再考虑；\n>\n",
+  "> **排除**（%d 个：%s）为外源污染物，不作为干预靶点。\n\n"),
+  paste(pr, collapse = "、"), length(pr),
+  length(un), paste(substr(un, 1, 24), collapse = "、"),
+  length(ex), paste(ex, collapse = "、")))
+```
+
+# 分析四：三层中介分析（唾液物种 → 尿液物种 → 尿液代谢物）
+
+将三个数据层串联，检验是否存在 **唾液微生物组 → 尿液微生物组 → 尿液代谢物**
+的中介链路（对应论文「口腔→肠道→代谢物」双向中介）。候选三元组要求
+*暴露–中介* 与 *中介–结局* 相关均名义显著（|r|≥0.3, P<0.05）；用 `mediation::mediate`
+做非参数中介推断，模型校正 **年龄、性别、疾病组**。
+
+```{r p4-mediation}
+ccXM <- P1$cc                                          # saliva-mic x urine-mic
+alMY <- align_subjects(UM_clr, Umet_r$log2)
+ccMY <- cross_correlation(alMY$A, alMY$B)              # urine-mic x urine-metab
+MED  <- mediation_scan(SM_clr, UM_clr, Umet_r$log2, meta, ccXM, ccMY,
+                       max_triples = 120, sims = 300, require_xy = FALSE)
+```
+
+```{r p4-report}
+if (nrow(MED$res) > 0) {
+  write.csv(MED$res, file.path(TAB, "P4_mediation.csv"), row.names = FALSE)
+  sm <- data.frame(
+    指标 = c("候选中介三元组","完成检验数","ACME P<0.05","ACME FDR<0.10","最小 ACME P"),
+    数值 = c(MED$n_candidate, nrow(MED$res), sum(MED$res$ACME_p < 0.05),
+             sum(MED$res$ACME_fdr < 0.10), signif(min(MED$res$ACME_p), 2)))
+  kb(sm, "三层中介扫描结果汇总", dig = 3)
+  tt <- head(MED$res[, c("saliva_microbe","urine_microbe","urine_metab",
+                         "ACME","ACME_p","prop_med")], 10)
+  tt$urine_metab <- clean_name(tt$urine_metab)
+  colnames(tt) <- c("唾液物种","尿液物种","尿液代谢物","ACME","ACME_P","中介比例")
+  kb(tt, "中介效应最强的链路（前 10，按 ACME P 排序）")
+} else {
+  cat("未找到满足前置相关条件的中介三元组。")
+}
+```
+
+**结论**：在 `r MED$n_candidate` 条候选链路中，经多重检验校正后
+**无显著中介效应**（FDR > 0.10）。这与分析一致：唾液与尿液微生物组耦合很弱，
+因而难以构成「口腔菌→泌尿菌→尿代谢物」的连贯中介链——本队列的跨体液信号
+**主要存在于代谢组层面**，而非微生物组层面。
+
+# 综合与结论
+
+```{r synthesis}
+SUM <- rbind(
+  pairing_summary(P1, "① 唾液微生物组→尿液微生物组"),
+  pairing_summary(P2, "② 唾液微生物组→尿液代谢组"),
+  pairing_summary(P3, "③ 唾液代谢组→尿液代谢组"))
+write.csv(SUM, file.path(TAB, "cross_pairing_summary.csv"), row.names = FALSE)
+disp <- SUM
+colnames(disp) <- c("分析组合","n","Mantel r","Mantel P","Procr r","Procr P",
+                    "PERMANOVA R²","PERMANOVA P","dbRDA R²","dbRDA P",
+                    "显著对","显著对(FDR)","RF 平均R²","R²>5%比例")
+kb(disp, "三类唾液→尿液跨层关系汇总（四法并列；注意 PERMANOVA≈dbRDA）")
+```
+
+```{r synthesis-fig}
+pd <- data.frame(
+  pairing = factor(c("MIC->MIC","MIC->MET","MET->MET"),
+                   levels = c("MIC->MIC","MIC->MET","MET->MET")),
+  Procrustes = c(P1$cg$protest$t0, P2$cg$protest$t0, P3$cg$protest$t0),
+  dbRDA_R2   = c(P1$ve$R2, P2$ve$R2, P3$ve$R2),
+  RF_meanR2  = c(P1$rf$mean, P2$rf$mean, P3$rf$mean))
+pl <- tidyr::pivot_longer(pd, -pairing, names_to = "metric", values_to = "value")
+ps <- ggplot(pl, aes(pairing, value, fill = metric)) +
+  geom_col(position = "dodge") +
+  geom_hline(yintercept = 0, linewidth = .3) +
+  scale_fill_manual(values = c(Procrustes = "#3C5488", dbRDA_R2 = "#00A087",
+                               RF_meanR2 = "#E64B35")) +
+  labs(title = "Saliva -> Urine cross-layer coupling strength",
+       x = NULL, y = "statistic / R2", fill = NULL) +
+  theme_bw(base_size = 12) + theme(legend.position = "top")
+savefig(ps, "synthesis_coupling.png", 6.5, 4.2)
+```
+
+## 主要发现
+
+1. **代谢组 → 代谢组 是最强的唾液→尿液跨体液轴**：群落级一致性显著
+   （Mantel/Procrustes/dbRDA 均显著），机器学习可由唾液代谢组稳健预测大量尿液代谢物，
+   反映两体液共享系统循环代谢物。
+2. **唾液微生物组 → 尿液代谢组 存在可观的局部关联**：显著相关对数远多于物种–物种层，
+   印证论文「微生物**组成**不必然等同于**功能/代谢**」的核心观点。
+3. **微生物组 → 微生物组 跨体液耦合最弱**：口腔与泌尿道是相对独立的生态系统，
+   整体群落几乎不一致，仅个别物种存在弱关联。
+4. **三层中介链路不显著**：因唾液–尿液菌群耦合弱，未形成连贯的
+   「口腔菌→泌尿菌→尿代谢物」中介通路；本队列跨体液信号集中于代谢层。
+
+> 与论文的 **口腔–肠道轴** 相比，本队列的 **唾液–尿液轴** 在微生物组层面耦合更弱、
+> 在代谢组层面耦合更强，符合两体液解剖学与生理学连接方式的差异
+> （消化道连续 vs 经血液循环过滤至尿液）。
+
+```{r sessioninfo}
+si <- sessionInfo()
+cat("R:", si$R.version$version.string, "\n")
+cat("关键包：vegan", as.character(packageVersion("vegan")),
+    "| randomForest", as.character(packageVersion("randomForest")),
+    "| mediation", as.character(packageVersion("mediation")), "\n")
+```
